@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-30T16:13:25.894Z",
+  "generatedAt": "2026-09-30T16:32:36.670Z",
   "collections": [
     {
       "name": "users",
@@ -42,6 +42,17 @@
             "onCreate",
             "onUpdate"
           ]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "consultor",
+            "gestor",
+            "administrador"
+          ]
         }
       ],
       "indexes": [
@@ -56,8 +67,8 @@
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "update": "@request.auth.id != '' && (estado != 'aguardando_aprovacao_de_excecao' || @request.auth.role != 'consultor')",
+        "delete": null
       },
       "fields": [
         {
