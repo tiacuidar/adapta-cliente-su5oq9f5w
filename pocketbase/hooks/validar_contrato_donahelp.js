@@ -43,10 +43,15 @@ routerAdd(
     // Resposta sanitizada — nunca incluir o token ou o corpo cru completo
     const httpStatus = res.statusCode
     let parsed = null
-    try {
-      parsed = JSON.parse(res.body)
-    } catch (err) {
-      parsed = null
+    // res.body é bytes; usar res.json (parsed) ou decodificar com TextDecoder
+    if (res.json && typeof res.json === 'object') {
+      parsed = res.json
+    } else if (res.body) {
+      try {
+        parsed = JSON.parse(new TextDecoder().decode(res.body))
+      } catch (err) {
+        parsed = null
+      }
     }
 
     if (httpStatus !== 200 || !parsed) {
