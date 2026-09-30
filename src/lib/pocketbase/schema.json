@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T13:25:43.880Z",
+  "generatedAt": "2026-09-30T16:13:25.894Z",
   "collections": [
     {
       "name": "users",
@@ -29,19 +29,142 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
         "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ]
+    },
+    {
+      "name": "ocorrencias",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "source_system",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "source_meeting_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "portal_unit_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "occurrence_type",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data_fato",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "horario",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "relato",
+          "type": "editor",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "estado",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "pendente",
+            "em_revisao",
+            "aguardando_correcao",
+            "aguardando_aprovacao_de_excecao",
+            "possivel_duplicidade",
+            "falha_de_gravacao",
+            "confirmado"
+          ]
+        },
+        {
+          "name": "idempotency_key",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "portal_occurrence_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "motivo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_ocorrencias_idempotency ON ocorrencias (idempotency_key)",
+        "CREATE INDEX idx_ocorrencias_unidade_data ON ocorrencias (portal_unit_id, data_fato)",
+        "CREATE INDEX idx_ocorrencias_estado ON ocorrencias (estado)"
       ]
     }
   ]
