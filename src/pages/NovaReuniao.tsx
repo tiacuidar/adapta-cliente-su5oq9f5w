@@ -31,7 +31,16 @@ type EstadoCriacao =
   | { tipo: 'excecao'; estado: string; mensagem: string }
 
 const NovaReuniao = () => {
-  const [empresa, setEmpresa] = useState<'acuidar' | 'donahelp'>('acuidar')
+  // LT-1-T06 — RLS por empresa: o usuário só registra nas empresas autorizadas
+  const auth = pb.authStore.record
+  const role = String(auth?.role || 'consultor')
+  const autorizadas: ('acuidar' | 'donahelp')[] =
+    role === 'gestor' || role === 'administrador'
+      ? ['acuidar', 'donahelp']
+      : ((auth?.empresas_autorizadas as ('acuidar' | 'donahelp')[]) || []).filter(
+          (e) => e === 'acuidar' || e === 'donahelp',
+        )
+  const [empresa, setEmpresa] = useState<'acuidar' | 'donahelp'>(autorizadas[0] || 'acuidar')
   const [unidades, setUnidades] = useState<Unidade[]>([])
   const [fonteStatus, setFonteStatus] = useState<'carregando' | 'ok' | 'indisponivel'>('carregando')
   const [unidadeCodigo, setUnidadeCodigo] = useState('')
@@ -224,8 +233,12 @@ const NovaReuniao = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="acuidar">Acuidar Franquias</SelectItem>
-                    <SelectItem value="donahelp">Dona Help Franquias</SelectItem>
+                    {autorizadas.includes('acuidar') && (
+                      <SelectItem value="acuidar">Acuidar Franquias</SelectItem>
+                    )}
+                    {autorizadas.includes('donahelp') && (
+                      <SelectItem value="donahelp">Dona Help Franquias</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

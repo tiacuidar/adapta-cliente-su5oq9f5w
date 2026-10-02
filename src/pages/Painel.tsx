@@ -72,7 +72,16 @@ type Resposta =
   | { resultado: 'erro'; mensagem?: string }
 
 const Painel = () => {
-  const [empresa, setEmpresa] = useState('acuidar')
+  // LT-1-T06 — RLS por empresa: o painel só mostra as empresas autorizadas do usuário
+  const auth = pb.authStore.record
+  const role = String(auth?.role || 'consultor')
+  const autorizadas: string[] =
+    role === 'gestor' || role === 'administrador'
+      ? ['acuidar', 'donahelp']
+      : ((auth?.empresas_autorizadas as string[]) || []).filter(
+          (e) => e === 'acuidar' || e === 'donahelp',
+        )
+  const [empresa, setEmpresa] = useState(autorizadas[0] || 'acuidar')
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7))
   const [dados, setDados] = useState<Resposta | null>(null)
   const [carregando, setCarregando] = useState(true)
@@ -149,8 +158,12 @@ const Painel = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="acuidar">Acuidar Franquias</SelectItem>
-              <SelectItem value="donahelp">Dona Help Franquias</SelectItem>
+              {autorizadas.includes('acuidar') && (
+                <SelectItem value="acuidar">Acuidar Franquias</SelectItem>
+              )}
+              {autorizadas.includes('donahelp') && (
+                <SelectItem value="donahelp">Dona Help Franquias</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
