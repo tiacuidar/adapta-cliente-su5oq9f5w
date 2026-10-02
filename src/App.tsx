@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import Agenda from './pages/Agenda'
 import Index from './pages/Index'
 import Login from './pages/Login'
 import Fila from './pages/Fila'
@@ -60,6 +61,14 @@ const App = () => (
             element={
               <RequireAuth>
                 <Painel />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/agenda"
+            element={
+              <RequireAuth>
+                <Agenda />
               </RequireAuth>
             }
           />

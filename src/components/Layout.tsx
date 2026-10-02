@@ -10,6 +10,7 @@ const NAV_ITENS = [
   { to: '/reunioes/nova', label: 'Registrar reunião' },
   { to: '/fila', label: 'Fila de ocorrências' },
   { to: '/painel', label: 'Painel de cobertura' },
+  { to: '/agenda', label: 'Importar da Agenda' },
 ]
 
 export default function Layout() {
