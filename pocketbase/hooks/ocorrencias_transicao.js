@@ -6,27 +6,29 @@
 //   - aprovador ≠ solicitante (CA-1-07): quem criou não aprova a própria exceção
 //   - ninguém exclui; confirmado não volta a pendente; trilha: aprovador_por + motivo
 // RLS da collection (0003) continua valendo — este hook é camada extra de validação de negócio.
-
-const TRANSICOES_PERMITIDAS = {
-  pendente: ['em_revisao', 'aguardando_correcao'],
-  em_revisao: [
-    'aguardando_correcao',
-    'aguardando_aprovacao_de_excecao',
-    'confirmado',
-    'possivel_duplicidade',
-    'falha_de_gravacao',
-  ],
-  aguardando_correcao: ['em_revisao', 'aguardando_aprovacao_de_excecao'],
-  aguardando_aprovacao_de_excecao: ['confirmado', 'aguardando_correcao'], // só gestor/admin (abaixo)
-  possivel_duplicidade: ['em_revisao', 'confirmado', 'falha_de_gravacao'], // decisão humana pós-conferência
-  falha_de_gravacao: ['em_revisao', 'confirmado'], // retomada humana (RN-1-10)
-  confirmado: [], // imutável pela integração (RN-1-06; correção posterior fora do fluxo)
-}
+// NOTA JSVM: toda a lógica fica inline no callback (sem constantes top-level).
 
 routerAdd('POST', '/backend/v1/ocorrencias/transicao', (e) => {
   const auth = e.auth
   if (!auth || !auth.id) {
     return e.json(401, { resultado: 'erro', mensagem: 'Autenticação obrigatória.' })
+  }
+
+  // Máquina de estados inline (JSVM não acessa declarações top-level no callback)
+  const TRANSICOES = {
+    pendente: ['em_revisao', 'aguardando_correcao'],
+    em_revisao: [
+      'aguardando_correcao',
+      'aguardando_aprovacao_de_excecao',
+      'confirmado',
+      'possivel_duplicidade',
+      'falha_de_gravacao',
+    ],
+    aguardando_correcao: ['em_revisao', 'aguardando_aprovacao_de_excecao'],
+    aguardando_aprovacao_de_excecao: ['confirmado', 'aguardando_correcao'],
+    possivel_duplicidade: ['em_revisao', 'confirmado', 'falha_de_gravacao'],
+    falha_de_gravacao: ['em_revisao', 'confirmado'],
+    confirmado: [],
   }
 
   const body = e.requestInfo().body || {}
@@ -54,7 +56,7 @@ routerAdd('POST', '/backend/v1/ocorrencias/transicao', (e) => {
   }
 
   // Transição válida?
-  const permitidas = TRANSICOES_PERMITIDAS[estadoAtual] || []
+  const permitidas = TRANSICOES[estadoAtual] || []
   if (!permitidas.includes(novoEstado)) {
     return e.json(200, {
       resultado: 'erro',

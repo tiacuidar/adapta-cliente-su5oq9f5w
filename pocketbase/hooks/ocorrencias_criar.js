@@ -113,7 +113,8 @@ routerAdd('POST', '/backend/v1/ocorrencias/criar', (e) => {
     rec.set('idempotency_key', idempotencyKey)
     rec.set('motivo', divergencia ? 'Divergência de data: ' + justificativa : '')
     rec.set('criado_por', auth.id)
-    rec.set('empresa', empresa)    try {
+    rec.set('empresa', empresa)
+    try {
       $app.save(rec)
     } catch (err) {
       // UNIQUE rejeitou (corrida de reenvio) → tratar como duplicata confirmada ou inconclusivo
