@@ -41,18 +41,27 @@ routerAdd('POST', '/backend/v1/ocorrencias/transicao', (e) => {
     return e.json(200, { resultado: 'erro', mensagem: 'id e estado são obrigatórios.' })
   }
 
-  let rec
+  // findRecordById no JSVM aplica as regras da collection e falha (404) para registros
+  // em aguardando_aprovacao_de_excecao mesmo para gestor — usar findRecordsByFilter
+  // (mesma via do hook de recuperação da F1-T06, que funciona)
+  let rec = null
   try {
-    rec = $app.findRecordById('ocorrencias', id)
+    const encontrados = $app.findRecordsByFilter('ocorrencias', 'id = {:id}', '-updated', 1, 0, {
+      id: id,
+    })
+    if (encontrados && encontrados.length > 0) {
+      rec = encontrados[0]
+    }
   } catch (err) {
+    rec = null
+  }
+  if (!rec) {
     return e.json(404, {
       resultado: 'erro',
       mensagem: 'Ocorrência não encontrada.',
-      debug: String(err).slice(0, 120),
     })
   }
   const estadoAtual = rec.getString('estado')
-
   // Consultor nunca toca registro em aguardando_aprovacao (defesa em profundidade — a RLS já nega)
   if (estadoAtual === 'aguardando_aprovacao_de_excecao' && role === 'consultor') {
     return e.json(404, { resultado: 'erro', mensagem: 'Ocorrência não encontrada.' })
