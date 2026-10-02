@@ -74,19 +74,17 @@ routerAdd(
     }
 
     // Parser por empresa: wrapper (Acuidar) vs array direto (Dona Help)
-    // F1-T01 validou {status, message, dados}; aceitar qualquer wrapper com array em dados
+    // res.json pode já vir como array (chaves numéricas) — tratar os dois casos
     let lista = null
-    if (empresa === 'acuidar') {
+    if (Array.isArray(parsed)) {
+      lista = parsed
+    } else if (parsed && typeof parsed === 'object') {
       if (Array.isArray(parsed.dados)) {
         lista = parsed.dados
       } else if (Array.isArray(parsed.data)) {
         lista = parsed.data
       } else if (Array.isArray(parsed.unidades)) {
         lista = parsed.unidades
-      }
-    } else {
-      if (Array.isArray(parsed)) {
-        lista = parsed
       }
     }
 
