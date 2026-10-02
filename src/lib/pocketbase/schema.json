@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T15:48:32.187Z",
+  "generatedAt": "2026-10-02T16:17:27.348Z",
   "collections": [
     {
       "name": "users",
@@ -53,6 +53,16 @@
             "gestor",
             "administrador"
           ]
+        },
+        {
+          "name": "empresas_autorizadas",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "acuidar",
+            "donahelp"
+          ]
         }
       ],
       "indexes": [
@@ -64,10 +74,10 @@
       "name": "ocorrencias",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && (@request.auth.empresas_autorizadas ?~ empresa || empresa = '' && @request.auth.empresas_autorizadas ?~ 'acuidar' || @request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
+        "view": "@request.auth.id != '' && (@request.auth.empresas_autorizadas ?~ empresa || empresa = '' && @request.auth.empresas_autorizadas ?~ 'acuidar' || @request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != '' && (estado != 'aguardando_aprovacao_de_excecao' || @request.auth.role != 'consultor')",
+        "update": "@request.auth.id != '' && (estado != 'aguardando_aprovacao_de_excecao' || @request.auth.role != 'consultor') && (@request.auth.empresas_autorizadas ?~ empresa || empresa = '' && @request.auth.empresas_autorizadas ?~ 'acuidar' || @request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
         "delete": null
       },
       "fields": [
