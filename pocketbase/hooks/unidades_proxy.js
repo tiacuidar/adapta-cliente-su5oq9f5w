@@ -14,6 +14,24 @@ routerAdd(
       return e.json(400, { resultado: 'erro', motivo: 'empresa_invalida' })
     }
 
+    // LT-1-T06 — RLS por empresa (defesa em profundidade): consultora só consulta
+    // unidades da(s) empresa(s) autorizada(s); gestor/admin veem ambas.
+    const auth = e.auth
+    if (!auth || !auth.id) {
+      return e.json(401, { resultado: 'erro', motivo: 'autenticacao_obrigatoria' })
+    }
+    const role = auth.getString('role') || 'consultor'
+    let autorizadas = []
+    try {
+      autorizadas = auth.get('empresas_autorizadas') || []
+    } catch (err) {
+      autorizadas = []
+    }
+    const veAmbas = role === 'gestor' || role === 'administrador'
+    if (!veAmbas && !autorizadas.includes(empresa)) {
+      return e.json(403, { resultado: 'erro', motivo: 'empresa_nao_autorizada' })
+    }
+
     const token =
       empresa === 'acuidar'
         ? $secrets.get('ACUIDAR_PORTAL_TOKEN') || ''

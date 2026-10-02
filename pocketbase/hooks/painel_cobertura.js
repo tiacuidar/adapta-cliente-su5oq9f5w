@@ -26,6 +26,23 @@ routerAdd('GET', '/backend/v1/painel/cobertura', (e) => {
     })
   }
 
+  // LT-1-T06 — RLS por empresa (defesa em profundidade): o painel só mostra a empresa
+  // se ela estiver nas empresas_autorizadas do usuário (gestor/admin têm ambas).
+  const role = auth.getString('role') || 'consultor'
+  let autorizadas = []
+  try {
+    autorizadas = auth.get('empresas_autorizadas') || []
+  } catch (err) {
+    autorizadas = []
+  }
+  const veAmbas = role === 'gestor' || role === 'administrador'
+  if (!veAmbas && !autorizadas.includes(empresa)) {
+    return e.json(403, {
+      resultado: 'erro',
+      mensagem: 'Você não tem acesso à empresa ' + empresa + '.',
+    })
+  }
+
   // Mês de análise (padrão: mês atual UTC)
   const agora = new Date()
   const mesAlvo = /^\d{4}-\d{2}$/.test(mes) ? mes : agora.toISOString().slice(0, 7)

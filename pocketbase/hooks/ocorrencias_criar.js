@@ -14,6 +14,24 @@ routerAdd('POST', '/backend/v1/ocorrencias/criar', (e) => {
   const sourceSystem = String(body.source_system || '')
   const sourceMeetingId = String(body.source_meeting_id || '')
   const empresa = String(body.empresa || '')
+
+  // LT-1-T06 — RLS por empresa (defesa em profundidade): a empresa pedida deve estar
+  // nas empresas_autorizadas do usuário (gestor/admin têm ambas por configuração).
+  // JSVM: campos de record via getString/get — nunca propriedade (AP-2026-10-02-1150).
+  const role = auth.getString('role') || 'consultor'
+  let autorizadas = []
+  try {
+    autorizadas = auth.get('empresas_autorizadas') || []
+  } catch (err) {
+    autorizadas = []
+  }
+  const veAmbas = role === 'gestor' || role === 'administrador'
+  if (!veAmbas && !autorizadas.includes(empresa)) {
+    return e.json(403, {
+      resultado: 'erro',
+      mensagem: 'Você não tem acesso à empresa ' + empresa + '. Registro negado.',
+    })
+  }
   const occurrenceType = String(body.occurrence_type || '')
   const dataFato = String(body.data_fato || '')
   const horario = String(body.horario || '')
