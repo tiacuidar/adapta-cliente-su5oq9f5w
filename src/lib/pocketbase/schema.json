@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T14:50:27.769Z",
+  "generatedAt": "2026-10-02T15:42:05.059Z",
   "collections": [
     {
       "name": "users",
@@ -29,21 +29,30 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "role",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["consultor", "gestor", "administrador"]
+          "selectValues": [
+            "consultor",
+            "gestor",
+            "administrador"
+          ]
         }
       ],
       "indexes": [
@@ -148,14 +157,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "criado_por",
@@ -174,7 +188,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["acuidar", "donahelp"]
+          "selectValues": [
+            "acuidar",
+            "donahelp"
+          ]
         }
       ],
       "indexes": [
