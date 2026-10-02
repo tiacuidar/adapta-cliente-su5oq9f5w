@@ -5,6 +5,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Index from './pages/Index'
 import Login from './pages/Login'
+import Fila from './pages/Fila'
 import NovaReuniao from './pages/NovaReuniao'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
@@ -42,6 +43,14 @@ const App = () => (
             element={
               <RequireAuth>
                 <NovaReuniao />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/fila"
+            element={
+              <RequireAuth>
+                <Fila />
               </RequireAuth>
             }
           />

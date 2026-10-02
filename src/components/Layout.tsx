@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 const NAV_ITENS = [
   { to: '/', label: 'Início' },
   { to: '/reunioes/nova', label: 'Registrar reunião' },
+  { to: '/fila', label: 'Fila de ocorrências' },
 ]
 
 export default function Layout() {
