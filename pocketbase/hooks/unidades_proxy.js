@@ -74,10 +74,15 @@ routerAdd(
     }
 
     // Parser por empresa: wrapper (Acuidar) vs array direto (Dona Help)
+    // F1-T01 validou {status, message, dados}; aceitar qualquer wrapper com array em dados
     let lista = null
     if (empresa === 'acuidar') {
-      if (parsed && parsed.status === 'success' && Array.isArray(parsed.dados)) {
+      if (Array.isArray(parsed.dados)) {
         lista = parsed.dados
+      } else if (Array.isArray(parsed.data)) {
+        lista = parsed.data
+      } else if (Array.isArray(parsed.unidades)) {
+        lista = parsed.unidades
       }
     } else {
       if (Array.isArray(parsed)) {
