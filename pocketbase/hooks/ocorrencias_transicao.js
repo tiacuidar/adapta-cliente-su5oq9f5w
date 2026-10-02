@@ -35,38 +35,30 @@ routerAdd('POST', '/backend/v1/ocorrencias/transicao', (e) => {
   const id = String(body.id || '')
   const novoEstado = String(body.estado || '')
   const motivo = String(body.motivo || '').trim()
-  const role = String(auth.role || 'consultor')
-
+  // JSVM: Record não expõe campos como propriedade — usar getString (auth.role daria undefined)
+  const role = auth.getString('role') || 'consultor'
   if (!id || !novoEstado) {
     return e.json(200, { resultado: 'erro', mensagem: 'id e estado são obrigatórios.' })
   }
 
-  // DIAGNÓSTICO: o 404 vem antes do find? Logar entrada e resultado do find.
-  $app.logger().info('transicao: entrada', 'id', id, 'novoEstado', novoEstado, 'role', role)
   let rec = null
-  let findErro = ''
   try {
     const encontrados = $app.findRecordsByFilter('ocorrencias', 'id = {:id}', '-updated', 1, 0, {
       id: id,
     })
-    $app.logger().info('transicao: find ok', 'count', encontrados ? encontrados.length : -1)
     if (encontrados && encontrados.length > 0) {
       rec = encontrados[0]
     }
   } catch (err) {
-    findErro = String(err).slice(0, 150)
-    $app.logger().error('transicao: find falhou', 'error', findErro)
     rec = null
   }
   if (!rec) {
     return e.json(404, {
       resultado: 'erro',
       mensagem: 'Ocorrência não encontrada.',
-      findErro: findErro,
     })
   }
   const estadoAtual = rec.getString('estado')
-  $app.logger().info('transicao: estado atual', 'estado', estadoAtual)
   // Consultor nunca toca registro em aguardando_aprovacao (defesa em profundidade — a RLS já nega)
   if (estadoAtual === 'aguardando_aprovacao_de_excecao' && role === 'consultor') {
     return e.json(404, { resultado: 'erro', mensagem: 'Ocorrência não encontrada.' })
