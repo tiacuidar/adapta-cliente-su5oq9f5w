@@ -55,16 +55,37 @@ routerAdd('GET', '/backend/v1/painel/cobertura', (e) => {
         timeout: 10,
       })
       if (res.statusCode === 200) {
-        const data = JSON.parse(res.body)
+        // res.body é bytes (AP-2026-09-30-1715) — res.json já traz o objeto parseado
+        let parsed = null
+        if (res.json && typeof res.json === 'object') {
+          parsed = res.json
+        } else if (res.body) {
+          try {
+            parsed = JSON.parse(new TextDecoder().decode(res.body))
+          } catch (err2) {
+            parsed = null
+          }
+        }
         // Parser por empresa: Acuidar = wrapper {status, message, dados}; Dona Help = array direto
-        const lista = empresa === 'acuidar' ? data.dados || [] : Array.isArray(data) ? data : []
-        unidades = lista.map((u) => ({
-          codigo: String(u.codigo || ''),
-          nome: String(u.nome || ''),
-          cidade: String(u.cidade || ''),
-          estado_uf: String(u.estado || ''),
-        }))
-        unidadesTimestamp = new Date().toISOString()
+        let lista = null
+        if (Array.isArray(parsed)) {
+          lista = parsed
+        } else if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed.dados)) lista = parsed.dados
+          else if (Array.isArray(parsed.data)) lista = parsed.data
+          else if (Array.isArray(parsed.unidades)) lista = parsed.unidades
+        }
+        if (lista) {
+          unidades = lista.map((u) => ({
+            codigo: String(u.codigo || ''),
+            nome: String(u.nome || ''),
+            cidade: String(u.cidade || ''),
+            estado_uf: String(u.estado || ''),
+          }))
+          unidadesTimestamp = new Date().toISOString()
+        } else {
+          unidadesOk = false
+        }
       } else {
         unidadesOk = false
       }
