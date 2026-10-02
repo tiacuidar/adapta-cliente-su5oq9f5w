@@ -7,6 +7,7 @@ import Index from './pages/Index'
 import Login from './pages/Login'
 import Fila from './pages/Fila'
 import NovaReuniao from './pages/NovaReuniao'
+import Painel from './pages/Painel'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import pb from '@/lib/pocketbase/client'
@@ -51,6 +52,14 @@ const App = () => (
             element={
               <RequireAuth>
                 <Fila />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/painel"
+            element={
+              <RequireAuth>
+                <Painel />
               </RequireAuth>
             }
           />
