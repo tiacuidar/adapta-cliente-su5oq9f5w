@@ -91,9 +91,17 @@ routerAdd(
     }
 
     if (!lista) {
+      // Diagnóstico sanitizado: apenas tipos/chaves, nunca valores
+      const diag = {
+        tipo_raiz: typeof parsed,
+        chaves_raiz: parsed && typeof parsed === 'object' ? Object.keys(parsed).slice(0, 10) : null,
+        tipo_dados: parsed && typeof parsed === 'object' ? typeof parsed.dados : null,
+        dados_e_array: parsed && typeof parsed === 'object' ? Array.isArray(parsed.dados) : null,
+      }
       return e.json(200, {
         resultado: 'dados_indisponiveis',
         motivo: 'estrutura_inesperada',
+        diagnostico: diag,
       })
     }
 
