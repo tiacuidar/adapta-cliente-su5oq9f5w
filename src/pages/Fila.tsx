@@ -110,11 +110,28 @@ const Fila = () => {
     setErro('')
     setProcessando(true)
     try {
-      const res = await pb.send('/backend/v1/ocorrencias/transicao', {
+      // pb.send prefixa /api — a rota custom existe em /backend/v1/... (sem /api), então
+      // usamos fetch direto com o token do authStore (mesma via provada por curl)
+      const token = pb.authStore.token
+      const res = await fetch('/backend/v1/ocorrencias/transicao', {
         method: 'POST',
-        body: { id: oc.id, estado: novoEstado, motivo: motivoTxt },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token,
+        },
+        body: JSON.stringify({ id: oc.id, estado: novoEstado, motivo: motivoTxt }),
       })
-      const data = res as { resultado: string; mensagem?: string }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        setErro(
+          errData.mensagem ||
+            (res.status === 404
+              ? 'Você não tem permissão para esta ação.'
+              : 'Falha de comunicação (' + res.status + ').'),
+        )
+        return false
+      }
+      const data = (await res.json()) as { resultado: string; mensagem?: string }
       if (data.resultado !== 'ok') {
         setErro(data.mensagem || 'Transição negada.')
         return false
