@@ -45,9 +45,12 @@ routerAdd('POST', '/backend/v1/ocorrencias/transicao', (e) => {
   try {
     rec = $app.findRecordById('ocorrencias', id)
   } catch (err) {
-    return e.json(404, { resultado: 'erro', mensagem: 'Ocorrência não encontrada.' })
+    return e.json(404, {
+      resultado: 'erro',
+      mensagem: 'Ocorrência não encontrada.',
+      debug: String(err).slice(0, 120),
+    })
   }
-
   const estadoAtual = rec.getString('estado')
 
   // Consultor nunca toca registro em aguardando_aprovacao (defesa em profundidade — a RLS já nega)
