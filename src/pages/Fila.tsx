@@ -110,10 +110,10 @@ const Fila = () => {
     setErro('')
     setProcessando(true)
     try {
-      // pb.send prefixa /api — a rota custom existe em /backend/v1/... (sem /api), então
-      // usamos fetch direto com o token do authStore (mesma via provada por curl)
+      // pb.send prefixa /api e o nginx do preview não repassa POST /backend/* — usar a
+      // URL absoluta do backend (pb.baseUrl) com fetch direto (via provada por curl)
       const token = pb.authStore.token
-      const res = await fetch('/backend/v1/ocorrencias/transicao', {
+      const res = await fetch(pb.baseUrl + '/backend/v1/ocorrencias/transicao', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
