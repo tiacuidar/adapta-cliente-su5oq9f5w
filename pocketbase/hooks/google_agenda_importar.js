@@ -132,7 +132,8 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
       encodeURIComponent(timeMin) +
       '&timeMax=' +
       encodeURIComponent(timeMax) +
-      '&singleEvents=true&showDeleted=true&orderBy=startTime&maxResults=250'    const resG = $http.send({
+      '&singleEvents=true&showDeleted=true&orderBy=startTime&maxResults=250'
+    const resG = $http.send({
       url: 'https://www.googleapis.com/calendar/v3/calendars/primary/events' + params,
       method: 'GET',
       headers: { Authorization: 'Bearer ' + credencial },
