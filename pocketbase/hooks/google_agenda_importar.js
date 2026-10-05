@@ -2,6 +2,8 @@
 // POST /backend/v1/agenda/importar  body: { empresa, dias_atras?, dias_frente? }
 // Regras aplicadas (F1-T02 + SPEC-1-001 + SPEC-1-003):
 //   - Elegibilidade total: agendadas, remarcadas, canceladas, concluídas — nenhuma excluída (RN-1-06)
+//     showDeleted=true: evento cancelado OU excluído na agenda volta com status=cancelled
+//     (a API do Google omite cancelled sem esse parâmetro — furo corrigido em 2026-10-05)
 //   - Cancelada → ocorrência com motivo (RN-1-08); remarcação só com identificação confiável (RN-1-09)
 //   - Chave oficial = código da unidade via lookup no título (nunca adivinhar — RN-1-19)
 //   - Evento sem unidade identificável → pendente_conferencia (fila humana), sem inferência
@@ -130,8 +132,7 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
       encodeURIComponent(timeMin) +
       '&timeMax=' +
       encodeURIComponent(timeMax) +
-      '&singleEvents=true&orderBy=startTime&maxResults=250'
-    const resG = $http.send({
+      '&singleEvents=true&showDeleted=true&orderBy=startTime&maxResults=250'    const resG = $http.send({
       url: 'https://www.googleapis.com/calendar/v3/calendars/primary/events' + params,
       method: 'GET',
       headers: { Authorization: 'Bearer ' + credencial },
