@@ -82,7 +82,9 @@ routerAdd('POST', '/backend/v1/avaliacoes/salvar', (e) => {
       }
     }
   }
-  if (faltando.length > 0) {
+  // Carga histórica (decisão champion 2026-10-06 13:42): com contagem_qualitativa presente,
+  // as respostas individuais q1..q20 NÃO são exigidas (soma consolidada do PDF).
+  if (faltando.length > 0 && contagemQualitativa === null) {
     return e.json(200, {
       resultado: 'erro',
       mensagem: 'Perguntas obrigatórias ausentes/inválidas: ' + faltando.join(', ') + '.',
@@ -96,6 +98,37 @@ routerAdd('POST', '/backend/v1/avaliacoes/salvar', (e) => {
       resultado: 'erro',
       mensagem: 'pontuacao_faturamento obrigatória (0-20).',
     })
+  }
+  // Cliente oculto (0-20) — decisão do champion (2026-10-06 13:42): campo presente nos PDFs,
+  // entra no formulário; nas amostras extraídas foi 20 fixo, mas o campo aceita 0-20.
+  // Carga histórica: contagem_qualitativa consolidada substitui soma(q)+cliente_oculto.
+  let clienteOculto = 0
+  if (
+    body.cliente_oculto !== undefined &&
+    body.cliente_oculto !== null &&
+    body.cliente_oculto !== ''
+  ) {
+    clienteOculto = Number(body.cliente_oculto)
+    if (isNaN(clienteOculto) || clienteOculto < 0 || clienteOculto > 20) {
+      return e.json(200, {
+        resultado: 'erro',
+        mensagem: 'cliente_oculto inválido (use 0-20).',
+      })
+    }
+  }
+  let contagemQualitativa = null
+  if (
+    body.contagem_qualitativa !== undefined &&
+    body.contagem_qualitativa !== null &&
+    body.contagem_qualitativa !== ''
+  ) {
+    contagemQualitativa = Number(body.contagem_qualitativa)
+    if (isNaN(contagemQualitativa) || contagemQualitativa < 0) {
+      return e.json(200, {
+        resultado: 'erro',
+        mensagem: 'contagem_qualitativa inválida (use número >= 0).',
+      })
+    }
   }
   if (isNaN(pontCont) || pontCont < 0 || pontCont > 20) {
     return e.json(200, {
@@ -111,10 +144,14 @@ routerAdd('POST', '/backend/v1/avaliacoes/salvar', (e) => {
     })
   }
 
-  // Fórmula confirmada: soma das 20 perguntas + pontuação faturamento + pontuação contratos
+  // Fórmula (decisão champion 2026-10-06 13:42 — cliente oculto entra no cálculo):
+  //   base = contagem_qualitativa (carga histórica, soma consolidada do PDF)
+  //          || soma(q1..q20) + cliente_oculto
+  //   resultado_geral = base + pontuacao_faturamento + pontuacao_contratos
   let soma = 0
   for (const p of perguntas) soma += p
-  const resultadoGeral = soma + pontFat + pontCont
+  const base = contagemQualitativa !== null ? contagemQualitativa : soma + clienteOculto
+  const resultadoGeral = base + pontFat + pontCont
 
   // Idempotência: UNIQUE (programa, portal_unit_id, ano) — reenvio atualiza
   let existente = null
@@ -153,6 +190,10 @@ routerAdd('POST', '/backend/v1/avaliacoes/salvar', (e) => {
       : Number(body.contratos_fixos),
   )
   rec.set('pontuacao_contratos', pontCont)
+  rec.set('cliente_oculto', clienteOculto)
+  if (contagemQualitativa !== null) {
+    rec.set('contagem_qualitativa', contagemQualitativa)
+  }
   rec.set('resultado_geral', resultadoGeral)
   rec.set('ranqueada', ranqueada)
   rec.set('preenchido_por', auth.id)
@@ -182,6 +223,9 @@ routerAdd('POST', '/backend/v1/avaliacoes/salvar', (e) => {
     portal_unit_id: portalUnitId,
     ano: ano,
     soma_perguntas: soma,
+    cliente_oculto: clienteOculto,
+    contagem_qualitativa: contagemQualitativa,
+    base_calculo: base,
     pontuacao_faturamento: pontFat,
     pontuacao_contratos: pontCont,
     resultado_geral: resultadoGeral,

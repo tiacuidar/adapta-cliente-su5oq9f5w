@@ -120,6 +120,7 @@ const Avaliacao = () => {
   const [pontFat, setPontFat] = useState('')
   const [contratos, setContratos] = useState('')
   const [pontCont, setPontCont] = useState('')
+  const [clienteOculto, setClienteOculto] = useState('')
   const [ranqueada, setRanqueada] = useState('')
   const [observacao, setObservacao] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -155,7 +156,9 @@ const Avaliacao = () => {
   }, [respostas, nPerguntas])
   const pf = Number(pontFat || 0)
   const pc = programa === 'pecaf' ? Number(pontCont || 0) : 0
-  const resultadoGeral = somaPerguntas + pf + pc
+  const co = Number(clienteOculto || 0)
+  // Cliente oculto entra no cálculo (decisão champion 2026-10-06 13:42 — presente nos PDFs)
+  const resultadoGeral = somaPerguntas + co + pf + pc
 
   const faltando = useMemo(() => {
     const f: string[] = []
@@ -187,6 +190,7 @@ const Avaliacao = () => {
         tempo_franquia: tempo,
         pontuacao_faturamento: Number(pontFat),
         pontuacao_contratos: programa === 'pecaf' ? Number(pontCont) : 0,
+        cliente_oculto: Number(clienteOculto || 0),
         ranqueada,
         observacao,
       }
@@ -384,6 +388,15 @@ const Avaliacao = () => {
               placeholder="0-20"
             />
           </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Cliente oculto (0-20)</Label>
+            <Input
+              value={clienteOculto}
+              onChange={(e) => setClienteOculto(e.target.value)}
+              inputMode="numeric"
+              placeholder="0-20"
+            />
+          </div>
           {programa === 'pecaf' && (
             <>
               <div className="space-y-1">
@@ -430,7 +443,7 @@ const Avaliacao = () => {
           <p className="text-3xl font-bold">
             {resultadoGeral}
             <span className="text-sm font-normal text-muted-foreground ml-2">
-              = perguntas {somaPerguntas} + faturamento {pf} + contratos {pc}
+              = perguntas {somaPerguntas} + cliente oculto {co} + faturamento {pf} + contratos {pc}
             </span>
           </p>
         </CardContent>
