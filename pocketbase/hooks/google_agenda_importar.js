@@ -9,8 +9,10 @@
 //   - Evento sem unidade identificável → pendente_conferencia (fila humana), sem inferência
 //   - Idempotência: source_system=google_calendar + source_meeting_id=eventId (CA-1-05/1-08)
 //   - RLS por empresa (LT-1-T06): consultora só importa a(s) empresa(s) autorizada(s)
-//   - Credencial: GOOGLE_CALENDAR_TOKEN nos Secrets do Skip — nunca no código/chat/logs
-// Sem credencial → resposta explícita credencial_ausente (bloqueio LT07-A, dono: champion).
+//   - Credencial POR EMPRESA (LT-1-T08): acuidar → GOOGLE_CALENDAR_TOKEN;
+//     donahelp → GOOGLE_CALENDAR_TOKEN_DONAH — cada empresa tem agenda Google própria
+//     (decisão do champion, 2026-10-06). Nunca no código/chat/logs.
+// Sem credencial da empresa → resposta explícita credencial_ausente com o nome do secret.
 
 routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
   const auth = e.auth
@@ -46,13 +48,21 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
     })
   }
 
-  // Credencial — somente via Secrets do Skip (BLOQUEIO-LT07-A)
-  const credencial = $secrets.get('GOOGLE_CALENDAR_TOKEN')
+  // Credencial POR EMPRESA (LT-1-T08) — somente via Secrets do Skip (BLOQUEIO-LT07-A/LT08-A)
+  // acuidar → GOOGLE_CALENDAR_TOKEN · donahelp → GOOGLE_CALENDAR_TOKEN_DONAH
+  const secretCredencial =
+    empresa === 'acuidar' ? 'GOOGLE_CALENDAR_TOKEN' : 'GOOGLE_CALENDAR_TOKEN_DONAH'
+  const credencial = $secrets.get(secretCredencial)
   if (!credencial) {
     return e.json(200, {
       resultado: 'credencial_ausente',
+      secret: secretCredencial,
       mensagem:
-        'Credencial do Google Agenda não configurada. Grave GOOGLE_CALENDAR_TOKEN nos Secrets do Skip (Builder) — nunca pelo chat.',
+        'Credencial do Google Agenda da empresa ' +
+        empresa +
+        ' não configurada. Grave ' +
+        secretCredencial +
+        ' nos Secrets do Skip (Builder) — nunca pelo chat.',
     })
   }
 
