@@ -195,16 +195,10 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
       if (resT.statusCode === 200 && parsedT && parsedT.access_token) {
         return { token: parsedT.access_token }
       }
-      // DEBUG LT-1-T09 (temporário): diagnóstico da renovação sem expor valores
-      console.log(
-        'DEBUG renovacao ' +
-          empresa +
-          ': http=' +
-          resT.statusCode +
-          ' erro=' +
-          JSON.stringify(parsedT && parsedT.error ? parsedT.error : null),
-      )
-      return { falha: 'renovacao_rejeitada', http_status: resT.statusCode }
+      // Diagnóstico da renovação sem expor valores (erro do Google: unauthorized_client,
+      // invalid_grant etc. — orienta a correção sem vazar segredo)
+      const erroGoogle = parsedT && parsedT.error ? String(parsedT.error) : null
+      return { falha: 'renovacao_rejeitada', http_status: resT.statusCode, erro_google: erroGoogle }
     } catch (errR) {
       return { falha: 'renovacao_falhou' }
     }
@@ -230,12 +224,13 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
         }
         return e.json(200, {
           resultado: 'credencial_expirada',
+          erro_google: r.erro_google || null,
           mensagem:
-            'Access token do Google expirado e a renovação falhou (HTTP ' +
-            (r.http_status || 'erro') +
-            '). Regenere o refresh token ' +
+            'Access token do Google expirado e a renovação falhou' +
+            (r.erro_google ? ' (' + r.erro_google + ')' : '') +
+            '. Regenere o refresh token ' +
             secretRefresh +
-            ' nos Secrets do Skip (Builder) — o app OAuth em modo Teste expira o refresh token em 7 dias.',
+            ' com o MESMO client OAuth (GOOGLE_OAUTH_CLIENT_ID + GOOGLE_OAUTH_CLIENT_SECRET) e regrave nos Secrets do Skip — o app em modo Teste expira o refresh token em 7 dias.',
         })
       }
       credencial = r.token
