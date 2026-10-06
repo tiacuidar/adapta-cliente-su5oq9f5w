@@ -217,9 +217,7 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
         ranqueada: av.getString('ranqueada') || '',
         tempo_franquia: av.getString('tempo_franquia') || '',
         referencia: av.getString('referencia') || '',
-        faturamento_bruto: av.getFloat
-          ? av.getFloat('faturamento_bruto')
-          : Number(av.getString('faturamento_bruto') || 0),
+        faturamento_bruto: Number(av.getString('faturamento_bruto') || 0),
         contratos_fixos:
           av.getInt && av.getString('contratos_fixos') !== ''
             ? av.getInt('contratos_fixos')
@@ -316,22 +314,12 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
       if (contratos >= f.contratos && fat >= f.fat) {
         return {
           semaforo: 'amarelo',
-          motivo:
-            'atinge os mínimos (' +
-            f.contratos +
-            ' contratos / R$ ' +
-            f.fat.toLocaleString('pt-BR') +
-            ')',
+          motivo: 'atinge os mínimos (' + f.contratos + ' contratos / R$ ' + f.fat + ')',
         }
       }
       return {
         semaforo: 'vermelho',
-        motivo:
-          'abaixo dos mínimos (' +
-          f.contratos +
-          ' contratos / R$ ' +
-          f.fat.toLocaleString('pt-BR') +
-          ')',
+        motivo: 'abaixo dos mínimos (' + f.contratos + ' contratos / R$ ' + f.fat + ')',
       }
     }
     const f = faixaPedhe(meses)
