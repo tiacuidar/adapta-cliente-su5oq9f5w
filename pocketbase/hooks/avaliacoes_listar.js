@@ -14,10 +14,9 @@ routerAdd('GET', '/backend/v1/avaliacoes', (e) => {
   if (!empresa) {
     return e.json(200, {
       resultado: 'erro',
-      mensagem: 'Programa inválido. Use pefcab (Acuidar) ou pedhe (Dona Help).',
+      mensagem: 'Programa inválido. Use pefcaf (Acuidar) ou pedhe (Dona Help).',
     })
   }
-
   // RLS por empresa — defesa em profundidade
   const role = auth.getString('role') || 'consultor'
   let autorizadas = []

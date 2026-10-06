@@ -106,8 +106,8 @@ const Avaliacao = () => {
         )
 
   const [empresa, setEmpresa] = useState(autorizadas[0] || 'acuidar')
-  const programa = empresa === 'acuidar' ? 'pefcab' : 'pedhe'
-  const perguntas = programa === 'pefcab' ? PERGUNTAS_PECAF : PERGUNTAS_PEDHE
+  const programa = empresa === 'acuidar' ? 'pecaf' : 'pedhe'
+  const perguntas = programa === 'pecaf' ? PERGUNTAS_PECAF : PERGUNTAS_PEDHE
 
   const [unidades, setUnidades] = useState<Unidade[]>([])
   const [unidadeErro, setUnidadeErro] = useState('')
@@ -154,7 +154,7 @@ const Avaliacao = () => {
     return s
   }, [respostas, nPerguntas])
   const pf = Number(pontFat || 0)
-  const pc = programa === 'pefcab' ? Number(pontCont || 0) : 0
+  const pc = programa === 'pecaf' ? Number(pontCont || 0) : 0
   const resultadoGeral = somaPerguntas + pf + pc
 
   const faltando = useMemo(() => {
@@ -166,7 +166,7 @@ const Avaliacao = () => {
     if (!unidade) f.push('Unidade')
     if (!ano) f.push('Ano')
     if (pontFat === '') f.push('Pontuação do faturamento')
-    if (programa === 'pefcab' && pontCont === '') f.push('Pontuação dos contratos')
+    if (programa === 'pecaf' && pontCont === '') f.push('Pontuação dos contratos')
     if (!ranqueada) f.push('Ranqueada')
     return f
   }, [respostas, nPerguntas, unidade, ano, pontFat, pontCont, ranqueada, programa])
@@ -186,13 +186,13 @@ const Avaliacao = () => {
         referencia,
         tempo_franquia: tempo,
         pontuacao_faturamento: Number(pontFat),
-        pontuacao_contratos: programa === 'pefcab' ? Number(pontCont) : 0,
+        pontuacao_contratos: programa === 'pecaf' ? Number(pontCont) : 0,
         ranqueada,
         observacao,
       }
       for (let i = 1; i <= nPerguntas; i++) body['q' + i] = respostas['q' + i] || 0
       if (faturamento !== '') body.faturamento_bruto = Number(faturamento)
-      if (programa === 'pefcab' && contratos !== '') body.contratos_fixos = Number(contratos)
+      if (programa === 'pecaf' && contratos !== '') body.contratos_fixos = Number(contratos)
       const res = await fetch(pb.baseUrl + '/backend/v1/avaliacoes/salvar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
@@ -232,10 +232,10 @@ const Avaliacao = () => {
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <h1 className="text-2xl font-bold mb-1">
-        Avaliação {programa === 'pefcab' ? 'PECAF' : 'PEDHE'}
+        Avaliação {programa === 'pecaf' ? 'PECAF' : 'PEDHE'}
       </h1>
       <p className="text-sm text-muted-foreground mb-4">
-        {programa === 'pefcab'
+        {programa === 'pecaf'
           ? 'Programa de reconhecimento da rede Acuidar (anual — convenção).'
           : 'Programa de reconhecimento da rede Dona Help (anual — convenção).'}{' '}
         O sistema calcula o resultado geral automaticamente.
@@ -360,7 +360,7 @@ const Avaliacao = () => {
         <CardHeader>
           <CardTitle className="text-base">Indicadores quantitativos</CardTitle>
           <CardDescription>
-            {programa === 'pefcab'
+            {programa === 'pecaf'
               ? 'Faturamento bruto e contratos mensais fixos (dados de negócio — visíveis só a gestor/admin).'
               : 'Faturamento bruto (o PEDHE não usa contratos — pontuação de contratos = 0).'}
           </CardDescription>
@@ -384,7 +384,7 @@ const Avaliacao = () => {
               placeholder="0-20"
             />
           </div>
-          {programa === 'pefcab' && (
+          {programa === 'pecaf' && (
             <>
               <div className="space-y-1">
                 <Label className="text-xs">Contratos mensais fixos</Label>
