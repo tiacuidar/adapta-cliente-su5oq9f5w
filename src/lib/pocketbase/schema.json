@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T15:37:16.661Z",
+  "generatedAt": "2026-10-06T16:01:15.691Z",
   "collections": [
     {
       "name": "users",
@@ -295,6 +295,257 @@
       ],
       "indexes": [
         "CREATE UNIQUE INDEX idx_unidades_info_unidade ON unidades_info (empresa, portal_unit_id)"
+      ]
+    },
+    {
+      "name": "avaliacoes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.empresas_autorizadas ?~ empresa || empresa = '' && @request.auth.empresas_autorizadas ?~ 'acuidar' || @request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
+        "view": "@request.auth.id != '' && (@request.auth.empresas_autorizadas ?~ empresa || empresa = '' && @request.auth.empresas_autorizadas ?~ 'acuidar' || @request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'gestor' || @request.auth.role = 'administrador') && (@request.auth.empresas_autorizadas ?~ empresa || @request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "programa",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "pecaf",
+            "pedhe"
+          ]
+        },
+        {
+          "name": "empresa",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "acuidar",
+            "donahelp"
+          ]
+        },
+        {
+          "name": "portal_unit_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ano",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "referencia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tempo_franquia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "q1",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q2",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q4",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q5",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q6",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q7",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q8",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q9",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q10",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q11",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q12",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q13",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q14",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q15",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q16",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q17",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q18",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q19",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "q20",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "faturamento_bruto",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pontuacao_faturamento",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "contratos_fixos",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pontuacao_contratos",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "resultado_geral",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ranqueada",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "sim",
+            "nao"
+          ]
+        },
+        {
+          "name": "preenchido_por",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_avaliacoes_unica ON avaliacoes (programa, portal_unit_id, ano)"
       ]
     }
   ]
