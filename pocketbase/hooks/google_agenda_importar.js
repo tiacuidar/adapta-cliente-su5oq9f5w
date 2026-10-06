@@ -62,7 +62,11 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
   const secretCredencial =
     empresa === 'acuidar' ? 'GOOGLE_CALENDAR_TOKEN' : 'GOOGLE_CALENDAR_TOKEN_DONAH'
   let credencial = $secrets.get(secretCredencial)
-  if (!credencial) {
+  // LT-1-T09: access token ausente NÃO bloqueia se houver refresh token da empresa —
+  // o hook renova direto (o access token é efêmero; o refresh é a credencial real).
+  const secretRefresh =
+    empresa === 'acuidar' ? 'GOOGLE_CALENDAR_REFRESH_TOKEN' : 'GOOGLE_CALENDAR_REFRESH_TOKEN_DONAH'
+  if (!credencial && !$secrets.get(secretRefresh)) {
     return e.json(200, {
       resultado: 'credencial_ausente',
       secret: secretCredencial,
@@ -71,7 +75,9 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
         empresa +
         ' não configurada. Grave ' +
         secretCredencial +
-        ' nos Secrets do Skip (Builder) — nunca pelo chat.',
+        ' (access token) e ' +
+        secretRefresh +
+        ' (refresh token) nos Secrets do Skip (Builder) — nunca pelo chat.',
     })
   }
 
@@ -146,8 +152,6 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
   //    A credencial é um token de acesso (OAuth) gravado pelo champion nos Secrets.
   //    LT-1-T09: access token expira ~1h — no 401, renova via refresh token da empresa
   //    (on-demand, sem gravar de volta) e refaz a chamada na mesma requisição.
-  const secretRefresh =
-    empresa === 'acuidar' ? 'GOOGLE_CALENDAR_REFRESH_TOKEN' : 'GOOGLE_CALENDAR_REFRESH_TOKEN_DONAH'
   const consultarAgenda = (tokenAcesso) => {
     const params =
       '?timeMin=' +
@@ -206,10 +210,13 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
 
   let eventos = []
   try {
-    let resG = consultarAgenda(credencial)
+    let resG = null
+    if (credencial) {
+      resG = consultarAgenda(credencial)
+    }
     let renovado = false
-    if (resG.statusCode === 401) {
-      // Access token expirado/inválido → renovação on-demand (LT-1-T09)
+    if (!resG || resG.statusCode === 401) {
+      // Access token ausente OU expirado/inválido → renovação on-demand (LT-1-T09)
       const r = renovarAccessToken()
       if (r.falha) {
         if (r.falha === 'refresh_ausente') {
