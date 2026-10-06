@@ -236,7 +236,7 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
       if (status === 'cancelled') {
         const occurrenceTypeC = 'cancelamento'
         const idempotencyKeyC = $security.sha256(
-          'google_calendar:' + eventId + '::' + occurrenceTypeC,
+          'google_calendar:' + eventId + ':conferencia:' + occurrenceTypeC,
         )
         let existenteC = null
         try {
@@ -253,7 +253,9 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
           const recC = new Record(colC)
           recC.set('source_system', 'google_calendar')
           recC.set('source_meeting_id', eventId)
-          recC.set('portal_unit_id', '')
+          // portal_unit_id é required (min 1) — marcador 'conferencia' (não é código oficial;
+          // não entra na cobertura do painel, que agrupa por unidades reais do cadastro)
+          recC.set('portal_unit_id', 'conferencia')
           recC.set('occurrence_type', occurrenceTypeC)
           recC.set('data_fato', dataFato)
           recC.set('horario', horario)
