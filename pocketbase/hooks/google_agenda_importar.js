@@ -202,7 +202,31 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
       // Diagnóstico da renovação sem expor valores (erro do Google: unauthorized_client,
       // invalid_grant etc. — orienta a correção sem vazar segredo)
       const erroGoogle = parsedT && parsedT.error ? String(parsedT.error) : null
-      return { falha: 'renovacao_rejeitada', http_status: resT.statusCode, erro_google: erroGoogle }
+      const descGoogle =
+        parsedT && parsedT.error_description ? String(parsedT.error_description) : null
+      // Client ID não é segredo (é identificador público) — logar o sufixo para conferência
+      const cid = clientId || ''
+      const cidSufixo = cid.length > 20 ? cid.slice(-20) : cid.length + ' chars'
+      console.log(
+        'DEBUG renovacao ' +
+          empresa +
+          ': http=' +
+          resT.statusCode +
+          ' erro=' +
+          erroGoogle +
+          ' desc=' +
+          descGoogle +
+          ' client=...' +
+          cidSufixo +
+          ' refresh_len=' +
+          (refreshToken || '').length,
+      )
+      return {
+        falha: 'renovacao_rejeitada',
+        http_status: resT.statusCode,
+        erro_google: erroGoogle,
+        erro_desc: descGoogle,
+      }
     } catch (errR) {
       return { falha: 'renovacao_falhou' }
     }
