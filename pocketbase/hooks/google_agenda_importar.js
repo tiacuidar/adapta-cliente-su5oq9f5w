@@ -204,23 +204,6 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
       const erroGoogle = parsedT && parsedT.error ? String(parsedT.error) : null
       const descGoogle =
         parsedT && parsedT.error_description ? String(parsedT.error_description) : null
-      // Client ID não é segredo (é identificador público) — logar o sufixo para conferência
-      const cid = clientId || ''
-      const cidSufixo = cid.length > 20 ? cid.slice(-20) : cid.length + ' chars'
-      console.log(
-        'DEBUG renovacao ' +
-          empresa +
-          ': http=' +
-          resT.statusCode +
-          ' erro=' +
-          erroGoogle +
-          ' desc=' +
-          descGoogle +
-          ' client=...' +
-          cidSufixo +
-          ' refresh_len=' +
-          (refreshToken || '').length,
-      )
       return {
         falha: 'renovacao_rejeitada',
         http_status: resT.statusCode,
