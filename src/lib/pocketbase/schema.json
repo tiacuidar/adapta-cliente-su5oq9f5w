@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T16:59:28.224Z",
+  "generatedAt": "2026-10-06T17:00:38.447Z",
   "collections": [
     {
       "name": "users",
@@ -355,109 +355,109 @@
         {
           "name": "q1",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q2",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q3",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q4",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q5",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q6",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q7",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q8",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q9",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q10",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q11",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q12",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q13",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q14",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q15",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q16",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q17",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "q18",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
