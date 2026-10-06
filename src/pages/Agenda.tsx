@@ -38,6 +38,7 @@ type Resposta =
       timestamp: string
     }
   | { resultado: 'credencial_ausente'; secret?: string; mensagem: string }
+  | { resultado: 'credencial_expirada'; mensagem: string }
   | { resultado: 'dados_indisponiveis'; motivo: string; fonte?: string }
   | { resultado: 'erro'; mensagem: string }
 
@@ -129,6 +130,14 @@ const Agenda = () => {
               <AlertDescription>
                 <strong>Credencial ausente{resposta.secret ? ` (${resposta.secret})` : ''}.</strong>{' '}
                 {resposta.mensagem}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {resposta?.resultado === 'credencial_expirada' && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                <strong>Credencial expirada.</strong> {resposta.mensagem}
               </AlertDescription>
             </Alert>
           )}
