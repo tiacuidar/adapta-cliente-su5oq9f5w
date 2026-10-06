@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 
 const NAV_ITENS = [
   { to: '/', label: 'Início' },
+  { to: '/farol', label: 'Farol das unidades' },
   { to: '/reunioes/nova', label: 'Registrar reunião' },
   { to: '/fila', label: 'Fila de ocorrências' },
   { to: '/painel', label: 'Painel de cobertura' },

@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Agenda from './pages/Agenda'
+import Farol from './pages/Farol'
 import Index from './pages/Index'
 import Login from './pages/Login'
 import Fila from './pages/Fila'
@@ -69,6 +70,14 @@ const App = () => (
             element={
               <RequireAuth>
                 <Agenda />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/farol"
+            element={
+              <RequireAuth>
+                <Farol />
               </RequireAuth>
             }
           />

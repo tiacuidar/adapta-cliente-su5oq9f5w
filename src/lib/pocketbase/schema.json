@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T12:03:23.196Z",
+  "generatedAt": "2026-10-06T15:32:01.058Z",
   "collections": [
     {
       "name": "users",
@@ -29,28 +29,40 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "role",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["consultor", "gestor", "administrador"]
+          "selectValues": [
+            "consultor",
+            "gestor",
+            "administrador"
+          ]
         },
         {
           "name": "empresas_autorizadas",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["acuidar", "donahelp"]
+          "selectValues": [
+            "acuidar",
+            "donahelp"
+          ]
         }
       ],
       "indexes": [
@@ -155,14 +167,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "criado_por",
@@ -181,13 +198,103 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["acuidar", "donahelp"]
+          "selectValues": [
+            "acuidar",
+            "donahelp"
+          ]
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX idx_ocorrencias_idempotency ON ocorrencias (idempotency_key)",
         "CREATE INDEX idx_ocorrencias_unidade_data ON ocorrencias (portal_unit_id, data_fato)",
         "CREATE INDEX idx_ocorrencias_estado ON ocorrencias (estado)"
+      ]
+    },
+    {
+      "name": "unidades_info",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.empresas_autorizadas ?~ empresa || empresa = '' && @request.auth.empresas_autorizadas ?~ 'acuidar' || @request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
+        "view": "@request.auth.id != '' && (@request.auth.empresas_autorizadas ?~ empresa || empresa = '' && @request.auth.empresas_autorizadas ?~ 'acuidar' || @request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'gestor' || @request.auth.role = 'administrador') && (@request.auth.empresas_autorizadas ?~ empresa || @request.auth.role = 'gestor' || @request.auth.role = 'administrador')",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "empresa",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "acuidar",
+            "donahelp"
+          ]
+        },
+        {
+          "name": "portal_unit_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status_atividade",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "ativa",
+            "treinada",
+            "suspensa",
+            "fechada"
+          ]
+        },
+        {
+          "name": "tempo_franquia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tentativas_sem_retorno",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "atualizado_por",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_unidades_info_unidade ON unidades_info (empresa, portal_unit_id)"
       ]
     }
   ]
