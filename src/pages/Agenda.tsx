@@ -37,7 +37,7 @@ type Resposta =
       ids_criadas: string[]
       timestamp: string
     }
-  | { resultado: 'credencial_ausente'; mensagem: string }
+  | { resultado: 'credencial_ausente'; secret?: string; mensagem: string }
   | { resultado: 'dados_indisponiveis'; motivo: string; fonte?: string }
   | { resultado: 'erro'; mensagem: string }
 
@@ -127,7 +127,8 @@ const Agenda = () => {
           {resposta?.resultado === 'credencial_ausente' && (
             <Alert variant="destructive">
               <AlertDescription>
-                <strong>Credencial ausente.</strong> {resposta.mensagem}
+                <strong>Credencial ausente{resposta.secret ? ` (${resposta.secret})` : ''}.</strong>{' '}
+                {resposta.mensagem}
               </AlertDescription>
             </Alert>
           )}
