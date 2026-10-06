@@ -172,6 +172,18 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
       return e.json(200, { resultado: 'erro', mensagem: 'Resposta inesperada do Google Calendar.' })
     }
     eventos = parsedG.items
+    // DEBUG LT-1-T08 (temporário): diagnóstico do que o Google devolveu — remover após a correção
+    const diagStatus = { confirmed: 0, cancelled: 0, tentative: 0, sem_start: 0, outros: 0 }
+    for (const ev of eventos) {
+      const st = String(ev.status || 'confirmed')
+      if (st === 'confirmed') diagStatus.confirmed++
+      else if (st === 'cancelled') {
+        if (ev.start && (ev.start.dateTime || ev.start.date)) diagStatus.cancelled++
+        else diagStatus.sem_start++
+      } else if (st === 'tentative') diagStatus.tentative++
+      else diagStatus.outros++
+    }
+    console.log('DEBUG agenda ' + empresa + ':', JSON.stringify(diagStatus))
   } catch (err) {
     return e.json(200, {
       resultado: 'erro',
