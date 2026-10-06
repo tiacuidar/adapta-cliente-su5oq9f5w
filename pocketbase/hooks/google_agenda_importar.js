@@ -6,7 +6,10 @@
 //     (a API do Google omite cancelled sem esse parâmetro — furo corrigido em 2026-10-05)
 //   - Cancelada → ocorrência com motivo (RN-1-08); remarcação só com identificação confiável (RN-1-09)
 //   - Chave oficial = código da unidade via lookup no título (nunca adivinhar — RN-1-19)
-//   - Evento sem unidade identificável → pendente_conferencia (fila humana), sem inferência
+//   - Evento CONFIRMADO sem unidade identificável → sem_unidade (conferência humana, sem inferência)
+//   - Evento CANCELADO/EXCLUÍDO sem unidade identificável → ocorrência de cancelamento com
+//     portal_unit_id vazio + estado pendente (decisão do champion, 2026-10-06: RN-1-08 vence —
+//     cancelamento nunca fica sem registro; a unidade é resolvida por conferência humana na fila)
 //   - Idempotência: source_system=google_calendar + source_meeting_id=eventId (CA-1-05/1-08)
 //   - RLS por empresa (LT-1-T06): consultora só importa a(s) empresa(s) autorizada(s)
 //   - Credencial POR EMPRESA (LT-1-T08): acuidar → GOOGLE_CALENDAR_TOKEN;
@@ -172,18 +175,6 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
       return e.json(200, { resultado: 'erro', mensagem: 'Resposta inesperada do Google Calendar.' })
     }
     eventos = parsedG.items
-    // DEBUG LT-1-T08 (temporário): diagnóstico do que o Google devolveu — remover após a correção
-    const diagStatus = { confirmed: 0, cancelled: 0, tentative: 0, sem_start: 0, outros: 0 }
-    for (const ev of eventos) {
-      const st = String(ev.status || 'confirmed')
-      if (st === 'confirmed') diagStatus.confirmed++
-      else if (st === 'cancelled') {
-        if (ev.start && (ev.start.dateTime || ev.start.date)) diagStatus.cancelled++
-        else diagStatus.sem_start++
-      } else if (st === 'tentative') diagStatus.tentative++
-      else diagStatus.outros++
-    }
-    console.log('DEBUG agenda ' + empresa + ':', JSON.stringify(diagStatus))
   } catch (err) {
     return e.json(200, {
       resultado: 'erro',
@@ -239,7 +230,63 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
 
     const unidade = buscarUnidade(titulo)
     if (!unidade) {
-      // RN-1-19: sem inferência — vai para conferência humana
+      // RN-1-19: sem inferência — o título não identifica a unidade.
+      // Decisão do champion (2026-10-06): cancelado/excluído NUNCA fica sem registro (RN-1-08) —
+      // vira ocorrência de cancelamento com unidade pendente de conferência na fila.
+      if (status === 'cancelled') {
+        const occurrenceTypeC = 'cancelamento'
+        const idempotencyKeyC = $security.sha256(
+          'google_calendar:' + eventId + '::' + occurrenceTypeC,
+        )
+        let existenteC = null
+        try {
+          existenteC = $app.findFirstRecordByFilter('ocorrencias', 'idempotency_key = {:k}', {
+            k: idempotencyKeyC,
+          })
+        } catch (errC) {
+          existenteC = null
+        }
+        if (existenteC) {
+          resumo.ja_existentes++
+        } else {
+          const colC = $app.findCollectionByNameOrId('ocorrencias')
+          const recC = new Record(colC)
+          recC.set('source_system', 'google_calendar')
+          recC.set('source_meeting_id', eventId)
+          recC.set('portal_unit_id', '')
+          recC.set('occurrence_type', occurrenceTypeC)
+          recC.set('data_fato', dataFato)
+          recC.set('horario', horario)
+          recC.set('titulo', titulo)
+          recC.set(
+            'relato',
+            'Importado do Google Calendar — reunião cancelada/excluída sem unidade identificável no título. Unidade pendente de conferência humana (RN-1-19: sem inferência).',
+          )
+          recC.set('estado', 'pendente')
+          recC.set('idempotency_key', idempotencyKeyC)
+          recC.set(
+            'motivo',
+            'Reunião cancelada na agenda (importada do Google Calendar) — unidade pendente de conferência.',
+          )
+          recC.set('criado_por', auth.id)
+          recC.set('empresa', empresa)
+          try {
+            $app.save(recC)
+            resumo.importadas++
+            resumo.canceladas++
+            idsCriadas.push(recC.id)
+          } catch (errC2) {
+            const msgC = String(errC2 || '')
+            if (msgC.indexOf('unique') !== -1 || msgC.indexOf('UNIQUE') !== -1) {
+              resumo.ja_existentes++
+            } else {
+              resumo.erros++
+            }
+          }
+        }
+        continue
+      }
+      // Confirmado sem unidade → conferência humana (lista), sem ocorrência
       resumo.sem_unidade++
       semUnidadeLista.push({ event_id: eventId, titulo: titulo, inicio: inicio })
       continue
