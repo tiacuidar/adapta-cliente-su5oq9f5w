@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T17:00:38.447Z",
+  "generatedAt": "2026-10-06T17:01:51.743Z",
   "collections": [
     {
       "name": "users",
@@ -481,7 +481,7 @@
         {
           "name": "pontuacao_faturamento",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
