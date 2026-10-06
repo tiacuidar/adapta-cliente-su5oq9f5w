@@ -15,6 +15,12 @@
 //   - Credencial POR EMPRESA (LT-1-T08): acuidar → GOOGLE_CALENDAR_TOKEN;
 //     donahelp → GOOGLE_CALENDAR_TOKEN_DONAH — cada empresa tem agenda Google própria
 //     (decisão do champion, 2026-10-06). Nunca no código/chat/logs.
+//   - Refresh token automático (LT-1-T09): access token do secret expira ~1h — no 401 do
+//     Google, o hook renova via POST oauth2.googleapis.com/token (grant_type=refresh_token)
+//     com GOOGLE_OAUTH_CLIENT_ID + GOOGLE_OAUTH_CLIENT_SECRET + refresh token da empresa
+//     (GOOGLE_CALENDAR_REFRESH_TOKEN / _DONAH) e usa o access token novo NA MESMA requisição
+//     (sem gravar de volta no secret — Skip não permite escrever secrets em runtime).
+//     Renovação falha → credencial_expirada com orientação de regenerar.
 // Sem credencial da empresa → resposta explícita credencial_ausente com o nome do secret.
 
 routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
@@ -55,7 +61,7 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
   // acuidar → GOOGLE_CALENDAR_TOKEN · donahelp → GOOGLE_CALENDAR_TOKEN_DONAH
   const secretCredencial =
     empresa === 'acuidar' ? 'GOOGLE_CALENDAR_TOKEN' : 'GOOGLE_CALENDAR_TOKEN_DONAH'
-  const credencial = $secrets.get(secretCredencial)
+  let credencial = $secrets.get(secretCredencial)
   if (!credencial) {
     return e.json(200, {
       resultado: 'credencial_ausente',
@@ -138,20 +144,95 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
 
   // 2. Consultar a agenda (Google Calendar API v3 — lista de eventos)
   //    A credencial é um token de acesso (OAuth) gravado pelo champion nos Secrets.
-  let eventos = []
-  try {
+  //    LT-1-T09: access token expira ~1h — no 401, renova via refresh token da empresa
+  //    (on-demand, sem gravar de volta) e refaz a chamada na mesma requisição.
+  const secretRefresh =
+    empresa === 'acuidar' ? 'GOOGLE_CALENDAR_REFRESH_TOKEN' : 'GOOGLE_CALENDAR_REFRESH_TOKEN_DONAH'
+  const consultarAgenda = (tokenAcesso) => {
     const params =
       '?timeMin=' +
       encodeURIComponent(timeMin) +
       '&timeMax=' +
       encodeURIComponent(timeMax) +
       '&singleEvents=true&showDeleted=true&orderBy=startTime&maxResults=250'
-    const resG = $http.send({
+    return $http.send({
       url: 'https://www.googleapis.com/calendar/v3/calendars/primary/events' + params,
       method: 'GET',
-      headers: { Authorization: 'Bearer ' + credencial },
+      headers: { Authorization: 'Bearer ' + tokenAcesso },
       timeout: 20,
     })
+  }
+  const renovarAccessToken = () => {
+    const clientId = $secrets.get('GOOGLE_OAUTH_CLIENT_ID')
+    const clientSecret = $secrets.get('GOOGLE_OAUTH_CLIENT_SECRET')
+    const refreshToken = $secrets.get(secretRefresh)
+    if (!clientId || !clientSecret || !refreshToken) {
+      return { falha: 'refresh_ausente', secret: secretRefresh }
+    }
+    try {
+      const resT = $http.send({
+        url: 'https://oauth2.googleapis.com/token',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:
+          'grant_type=refresh_token&client_id=' +
+          encodeURIComponent(clientId) +
+          '&client_secret=' +
+          encodeURIComponent(clientSecret) +
+          '&refresh_token=' +
+          encodeURIComponent(refreshToken),
+        timeout: 15,
+      })
+      let parsedT = null
+      if (resT.json && typeof resT.json === 'object') parsedT = resT.json
+      else if (resT.body) {
+        try {
+          parsedT = JSON.parse(new TextDecoder().decode(resT.body))
+        } catch (errT) {
+          parsedT = null
+        }
+      }
+      if (resT.statusCode === 200 && parsedT && parsedT.access_token) {
+        return { token: parsedT.access_token }
+      }
+      return { falha: 'renovacao_rejeitada', http_status: resT.statusCode }
+    } catch (errR) {
+      return { falha: 'renovacao_falhou' }
+    }
+  }
+
+  let eventos = []
+  try {
+    let resG = consultarAgenda(credencial)
+    let renovado = false
+    if (resG.statusCode === 401) {
+      // Access token expirado/inválido → renovação on-demand (LT-1-T09)
+      const r = renovarAccessToken()
+      if (r.falha) {
+        if (r.falha === 'refresh_ausente') {
+          return e.json(200, {
+            resultado: 'credencial_ausente',
+            secret: r.secret,
+            mensagem:
+              'Access token do Google expirado e refresh token não configurado. Grave ' +
+              r.secret +
+              ' nos Secrets do Skip (Builder) — nunca pelo chat.',
+          })
+        }
+        return e.json(200, {
+          resultado: 'credencial_expirada',
+          mensagem:
+            'Access token do Google expirado e a renovação falhou (HTTP ' +
+            (r.http_status || 'erro') +
+            '). Regenere o refresh token ' +
+            secretRefresh +
+            ' nos Secrets do Skip (Builder) — o app OAuth em modo Teste expira o refresh token em 7 dias.',
+        })
+      }
+      credencial = r.token
+      renovado = true
+      resG = consultarAgenda(credencial)
+    }
     if (resG.statusCode !== 200) {
       return e.json(200, {
         resultado: 'erro',
