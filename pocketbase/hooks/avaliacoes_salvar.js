@@ -57,6 +57,39 @@ routerAdd('POST', '/backend/v1/avaliacoes/salvar', (e) => {
     })
   }
 
+  // Cliente oculto (0-20) — decisão do champion (2026-10-06 13:42): campo presente nos PDFs,
+  // entra no formulário; nas amostras extraídas foi 20 fixo, mas o campo aceita 0-20.
+  // Carga histórica: contagem_qualitativa consolidada substitui soma(q)+cliente_oculto.
+  // DECLARADO AQUI (antes do loop de perguntas) — a validação do faltando usa contagemQualitativa.
+  let clienteOculto = 0
+  if (
+    body.cliente_oculto !== undefined &&
+    body.cliente_oculto !== null &&
+    body.cliente_oculto !== ''
+  ) {
+    clienteOculto = Number(body.cliente_oculto)
+    if (isNaN(clienteOculto) || clienteOculto < 0 || clienteOculto > 20) {
+      return e.json(200, {
+        resultado: 'erro',
+        mensagem: 'cliente_oculto inválido (use 0-20).',
+      })
+    }
+  }
+  let contagemQualitativa = null
+  if (
+    body.contagem_qualitativa !== undefined &&
+    body.contagem_qualitativa !== null &&
+    body.contagem_qualitativa !== ''
+  ) {
+    contagemQualitativa = Number(body.contagem_qualitativa)
+    if (isNaN(contagemQualitativa) || contagemQualitativa < 0) {
+      return e.json(200, {
+        resultado: 'erro',
+        mensagem: 'contagem_qualitativa inválida (use número >= 0).',
+      })
+    }
+  }
+
   // 20 perguntas (0/1/2) — PECAF usa as 20; PEDHE usa 18 (q19/q20 = 0 automáticos,
   // pois o formulário PEDHE tem 18 perguntas nos PDFs)
   const perguntas = []
@@ -98,37 +131,6 @@ routerAdd('POST', '/backend/v1/avaliacoes/salvar', (e) => {
       resultado: 'erro',
       mensagem: 'pontuacao_faturamento obrigatória (0-20).',
     })
-  }
-  // Cliente oculto (0-20) — decisão do champion (2026-10-06 13:42): campo presente nos PDFs,
-  // entra no formulário; nas amostras extraídas foi 20 fixo, mas o campo aceita 0-20.
-  // Carga histórica: contagem_qualitativa consolidada substitui soma(q)+cliente_oculto.
-  let clienteOculto = 0
-  if (
-    body.cliente_oculto !== undefined &&
-    body.cliente_oculto !== null &&
-    body.cliente_oculto !== ''
-  ) {
-    clienteOculto = Number(body.cliente_oculto)
-    if (isNaN(clienteOculto) || clienteOculto < 0 || clienteOculto > 20) {
-      return e.json(200, {
-        resultado: 'erro',
-        mensagem: 'cliente_oculto inválido (use 0-20).',
-      })
-    }
-  }
-  let contagemQualitativa = null
-  if (
-    body.contagem_qualitativa !== undefined &&
-    body.contagem_qualitativa !== null &&
-    body.contagem_qualitativa !== ''
-  ) {
-    contagemQualitativa = Number(body.contagem_qualitativa)
-    if (isNaN(contagemQualitativa) || contagemQualitativa < 0) {
-      return e.json(200, {
-        resultado: 'erro',
-        mensagem: 'contagem_qualitativa inválida (use número >= 0).',
-      })
-    }
   }
   if (isNaN(pontCont) || pontCont < 0 || pontCont > 20) {
     return e.json(200, {
