@@ -57,12 +57,19 @@ routerAdd('POST', '/backend/v1/avaliacoes/salvar', (e) => {
     })
   }
 
-  // 20 perguntas obrigatórias (0/1/2)
+  // 20 perguntas (0/1/2) — PECAF usa as 20; PEDHE usa 18 (q19/q20 = 0 automáticos,
+  // pois o formulário PEDHE tem 18 perguntas nos PDFs)
   const perguntas = []
   const faltando = []
+  const totalPerguntas = programa === 'pedhe' ? 18 : 20
   for (let i = 1; i <= 20; i++) {
     const v = body['q' + i]
-    if (v === undefined || v === null || v === '') {
+    const ausente = v === undefined || v === null || v === ''
+    if (ausente && i > totalPerguntas) {
+      perguntas.push(0) // PEDHE: q19/q20 sem pergunta correspondente
+      continue
+    }
+    if (ausente) {
       faltando.push('q' + i)
       perguntas.push(0)
     } else {
