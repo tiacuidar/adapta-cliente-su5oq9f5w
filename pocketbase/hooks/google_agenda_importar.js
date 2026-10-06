@@ -195,6 +195,15 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
       if (resT.statusCode === 200 && parsedT && parsedT.access_token) {
         return { token: parsedT.access_token }
       }
+      // DEBUG LT-1-T09 (temporário): diagnóstico da renovação sem expor valores
+      console.log(
+        'DEBUG renovacao ' +
+          empresa +
+          ': http=' +
+          resT.statusCode +
+          ' erro=' +
+          JSON.stringify(parsedT && parsedT.error ? parsedT.error : null),
+      )
       return { falha: 'renovacao_rejeitada', http_status: resT.statusCode }
     } catch (errR) {
       return { falha: 'renovacao_falhou' }
