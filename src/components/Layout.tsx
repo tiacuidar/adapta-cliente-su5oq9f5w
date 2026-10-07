@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import pb from '@/lib/pocketbase/client'
 import { LogOut } from 'lucide-react'
@@ -30,6 +30,35 @@ export default function Layout() {
   const auth = pb.authStore.record
   const nome = String(auth?.name || auth?.email || '')
   const role = String(auth?.role || '')
+
+  // LT-2-T02 — sincronização das agendas ao logar (pedido do champion 2026-10-07 12:53,
+  // autorizado 12:55): no primeiro carregamento da sessão, importa as agendas das empresas
+  // que o usuário pode ver. FIRE-AND-FORGET e silencioso — o sistema NUNCA depende do Google
+  // (mesmo princípio da LT-2-T01); o botão manual da tela /agenda continua. Executado no
+  // Layout (página já carregada) para o fetch não ser cancelado pelo redirect do login.
+  const syncRodou = useRef(false)
+  useEffect(() => {
+    if (syncRodou.current) return
+    syncRodou.current = true
+    const rec = pb.authStore.record
+    if (!rec?.id) return
+    const r = String(rec.role || 'consultor')
+    const autorizadas: string[] =
+      r === 'gestor' || r === 'administrador'
+        ? ['acuidar', 'donahelp']
+        : ((rec.empresas_autorizadas as string[]) || []).filter(
+            (e2) => e2 === 'acuidar' || e2 === 'donahelp',
+          )
+    for (const emp of autorizadas) {
+      fetch(pb.baseUrl + '/backend/v1/agenda/importar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+        body: JSON.stringify({ empresa: emp }),
+      }).catch(() => {
+        // silencioso — o sistema nunca depende do Google
+      })
+    }
+  }, [])
 
   const sair = () => {
     pb.authStore.clear()
