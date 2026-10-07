@@ -277,15 +277,16 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
       return { semaforo: 'vermelho', motivo: 'tempo de franquia fora das faixas do regulamento' }
     const fat = av.faturamento_bruto
     if (!fat) return { semaforo: 'vermelho', motivo: 'faturamento ausente' }
+    // JSVM não tem toLocaleString (AP-2026-10-06-1710) — número puro no motivo
     if (fat >= f.fat) {
       return {
         semaforo: 'amarelo',
-        motivo: 'atinge o mínimo (R$ ' + f.fat.toLocaleString('pt-BR') + ')',
+        motivo: 'atinge o mínimo (R$ ' + f.fat + ')',
       }
     }
     return {
       semaforo: 'vermelho',
-      motivo: 'abaixo do mínimo (R$ ' + f.fat.toLocaleString('pt-BR') + ')',
+      motivo: 'abaixo do mínimo (R$ ' + f.fat + ')',
     }
   }
 
