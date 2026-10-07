@@ -23,6 +23,27 @@ const Login = () => {
     setCarregando(true)
     try {
       await pb.collection('users').authWithPassword(email.trim(), senha)
+      // LT-2-T02 — sincronização das agendas ao logar (pedido do champion 2026-10-07 12:53,
+      // autorizado 12:55): após auth ok, importa as agendas das empresas que o usuário pode ver.
+      // FIRE-AND-FORGET: o login NUNCA depende do Google (mesmo princípio da LT-2-T01) —
+      // falha de credencial/rede é silenciosa; o botão manual da tela /agenda continua.
+      const rec = pb.authStore.record
+      const role = String(rec?.role || 'consultor')
+      const autorizadas: string[] =
+        role === 'gestor' || role === 'administrador'
+          ? ['acuidar', 'donahelp']
+          : ((rec?.empresas_autorizadas as string[]) || []).filter(
+              (e2) => e2 === 'acuidar' || e2 === 'donahelp',
+            )
+      for (const emp of autorizadas) {
+        fetch(pb.baseUrl + '/backend/v1/agenda/importar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+          body: JSON.stringify({ empresa: emp }),
+        }).catch(() => {
+          // silencioso — o login nunca depende do Google
+        })
+      }
       // Sucesso: o guard de rota em App.tsx renderiza a área autenticada
       window.location.href = '/'
     } catch (err: unknown) {
