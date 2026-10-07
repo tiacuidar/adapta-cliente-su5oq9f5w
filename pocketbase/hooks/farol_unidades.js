@@ -1,9 +1,15 @@
-// FAROL-1 (FA-6, 2026-10-07) — Farol das Unidades: UNICAMENTE SEMÁFORO PECAF/PEDHE por empresa
+// FAROL-1 (FA-7, 2026-10-07) — Farol das Unidades: SEMÁFORO PECAF/PEDHE + MAPA DE
+// ACOMPANHAMENTO mensal (reuniões) + STATUS DE ATIVIDADE, com gráficos na tela.
 // GET /backend/v1/farol?empresa=acuidar|donahelp
-// Decisão do champion (2026-10-07 10:33-10:37): o farol é unicamente PECAF/PEDHE conforme a
-// empresa (Acuidar → PECAF · Dona Help → PEDHE) — reuniões NÃO influenciam mais o farol.
-// O mapa de acompanhamento mensal (reuniões) saiu do farol; a visão mensal continua no
-// painel de cobertura (SPEC-1-003). Regras do semáforo (aprovadas 2026-10-06, inalteradas):
+// Decisão do champion (2026-10-07 12:36, autorizada 12:40 "Pode implementar"): o mapa de
+// acompanhamento VOLTA ao farol (reversão parcial da FA-6) ALÉM do semáforo — os dois convivem.
+// Regras do mapa = as aprovadas e provadas na FA-1 (2026-10-06, "ok pode prosseguir"):
+//   em_dia          = registro no mês corrente OU reunião programada
+//   proximo_atraso  = sem registro no mês corrente a partir do dia 20
+//   em_atraso       = sem registro no mês corrente E mês anterior vazio
+//   programada      = reunião futura na agenda (sem registro no mês corrente)
+//   nao_retorna     = 3+ tentativas sem retorno (unidades_info) — VENCE as demais
+// Regras do semáforo (aprovadas 2026-10-06, INTACTAS):
 //   SEMÁFORO (FA-3 — regra aprovada; mínimos dos regulamentos dos PDFs):
 //     verde  = ranqueada = SIM
 //     amarelo= ranqueada = NÃO mas atinge os mínimos do regulamento para o tempo de franquia
@@ -112,10 +118,67 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
     })
   }
 
-  // FA-6 (decisão champion 2026-10-07): o farol é UNICAMENTE PECAF/PEDHE por empresa —
-  // reuniões NÃO influenciam mais o farol (mapa mensal removido; a visão mensal por
-  // reuniões continua no painel de cobertura — SPEC-1-003). Sem ocorrências aqui.
+  // FA-7 (decisão champion 2026-10-07 12:36, autorizada 12:40): o MAPA DE ACOMPANHAMENTO
+  // volta ao farol (reversão parcial da FA-6) ALÉM do semáforo — os dois convivem.
+  // Ocorrências do mês corrente (banco local, tempo real — mesma fonte do painel de cobertura).
   const agora = new Date()
+  const mesCorrente = agora.toISOString().slice(0, 7)
+  const iniMes = mesCorrente + '-01 00:00:00.000Z'
+  const proximoMesNum =
+    Number(mesCorrente.slice(5, 7)) === 12 ? 1 : Number(mesCorrente.slice(5, 7)) + 1
+  const proximoMesAno =
+    Number(mesCorrente.slice(5, 7)) === 12
+      ? Number(mesCorrente.slice(0, 4)) + 1
+      : Number(mesCorrente.slice(0, 4))
+  const fimMes = proximoMesAno + '-' + String(proximoMesNum).padStart(2, '0') + '-01 00:00:00.000Z'
+  const diaDoMes = agora.getUTCDate()
+
+  // Registros do mês corrente por unidade (todas as ocorrências — elegibilidade total RN-1-18)
+  const registroNoMes = {}
+  try {
+    const ocs = $app.findRecordsByFilter(
+      'ocorrencias',
+      'empresa = {:empresa} && data_fato >= {:ini} && data_fato < {:fim}',
+      '-created',
+      500,
+      0,
+      { empresa: empresa, ini: iniMes, fim: fimMes },
+    )
+    for (const oc of ocs) {
+      const uid = oc.getString('portal_unit_id')
+      if (!uid) continue
+      registroNoMes[uid] = (registroNoMes[uid] || 0) + 1
+    }
+  } catch (err) {
+    // falha ao ler ocorrências → mapa com contagem zerada (sem inferência — RN-1-14 não se
+    // aplica ao mapa: a fonte de ocorrências é o banco local; falha de rede não existe aqui)
+    registroNoMes = {}
+  }
+
+  // Reuniões programadas (futuras) por unidade — título com código oficial ou nome exato
+  // (RN-1-19: NUNCA adivinha; mesmo padrão do conector Google da LT-1-T07)
+  const programadaPorUnidade = {}
+  try {
+    const agoraISO = agora.toISOString().slice(0, 10)
+    const ocsFuturas = $app.findRecordsByFilter(
+      'ocorrencias',
+      'empresa = {:empresa} && data_fato > {:hoje}',
+      '-created',
+      500,
+      0,
+      { empresa: empresa, hoje: agoraISO },
+    )
+    for (const oc of ocsFuturas) {
+      const uid = oc.getString('portal_unit_id')
+      if (!uid || uid === 'conferencia') continue
+      const dataFato = (oc.getString('data_fato') || '').slice(0, 10)
+      if (!programadaPorUnidade[uid] || dataFato < programadaPorUnidade[uid]) {
+        programadaPorUnidade[uid] = dataFato
+      }
+    }
+  } catch (err) {
+    programadaPorUnidade = {}
+  }
 
   // 4. unidades_info: status de atividade + tentativas sem retorno + tempo de franquia
   let infoPorUnidade = {}
@@ -290,7 +353,7 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
     }
   }
 
-  // 7. Montar linhas (semáforo anual — FA-6: sem mapa mensal de reuniões)
+  // 7. Montar linhas (semáforo anual + mapa mensal FA-7)
   const linhas = []
   const semaforoContagem = { verde: 0, amarelo: 0, vermelho: 0, sem_classificacao: 0 }
   const statusAtividadeContagem = {
@@ -300,6 +363,16 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
     fechada: 0,
     sem_status: 0,
   }
+  const mapaContagem = {
+    em_dia: 0,
+    nao_retorna: 0,
+    proximo_atraso: 0,
+    em_atraso: 0,
+    programada: 0,
+  }
+
+  // Prioridade de exibição/ordenação: nao_retorna → em_atraso → proximo_atraso → programada → em_dia
+  const PRIORIDADE = { nao_retorna: 0, em_atraso: 1, proximo_atraso: 2, programada: 3, em_dia: 4 }
 
   for (const u of unidades) {
     const info = infoPorUnidade[u.codigo] || null
@@ -313,10 +386,28 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
     const av = avalPorUnidade[u.codigo] || null
     const tempoInfo = info ? info.tempo_franquia : ''
     const sem = classificarSemaforo(av, tempoInfo)
-    if (sem.semaforo === 'vermelho' && av && av.ranqueada === 'nao') {
-      // vermelho por mínimos — conta como vermelho
-    }
     semaforoContagem[sem.semaforo] = (semaforoContagem[sem.semaforo] || 0) + 1
+
+    // MAPA DE ACOMPANHAMENTO — regras aprovadas na FA-1 (nao_retorna vence as demais)
+    const tentativas = info ? Number(info.tentativas_sem_retorno || 0) : 0
+    const registros = registroNoMes[u.codigo] || 0
+    const proxima = programadaPorUnidade[u.codigo] || ''
+    let classificacao = ''
+    if (tentativas >= 3) {
+      classificacao = 'nao_retorna'
+    } else if (proxima) {
+      // reunião futura na agenda → programada (se também tem registro no mês, em_dia vence? —
+      // regra FA-1: em_dia = registro no mês corrente OU programada; programada é categoria
+      // própria quando NÃO há registro no mês corrente)
+      classificacao = registros > 0 ? 'em_dia' : 'programada'
+    } else if (registros > 0) {
+      classificacao = 'em_dia'
+    } else if (diaDoMes >= 20) {
+      classificacao = 'proximo_atraso'
+    } else {
+      classificacao = 'em_atraso'
+    }
+    mapaContagem[classificacao] = (mapaContagem[classificacao] || 0) + 1
 
     linhas.push({
       codigo: u.codigo,
@@ -326,6 +417,11 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
       observacao: info ? info.observacao : '',
       semaforo: sem.semaforo,
       semaforo_motivo: sem.motivo,
+      classificacao: classificacao,
+      prioridade: PRIORIDADE[classificacao] !== undefined ? PRIORIDADE[classificacao] : 9,
+      registro_no_mes: registros,
+      proxima_programada: proxima,
+      tentativas_sem_retorno: tentativas,
       avaliacao: av
         ? {
             id: av.id,
@@ -340,15 +436,20 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
     })
   }
 
+  // Ordenação por prioridade do mapa (nao_retorna primeiro)
+  linhas.sort((a, b) => a.prioridade - b.prioridade || a.nome.localeCompare(b.nome))
+
   return e.json(200, {
     resultado: 'ok',
     empresa: empresa,
     programa: programa,
     ano_avaliacao: anoAvaliacao,
+    mes_referencia: mesCorrente,
     gerado_em: new Date().toISOString(),
     total_unidades: unidades.length,
     semaforo_contagem: semaforoContagem,
     status_atividade_contagem: statusAtividadeContagem,
+    mapa_contagem: mapaContagem,
     fonte_unidades:
       empresa === 'acuidar'
         ? 'Portal Acuidar — atualização diária'
@@ -362,6 +463,10 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
       anoAvaliacao +
       ') + regulamento ' +
       programa.toUpperCase(),
+    fonte_mapa:
+      'intranet (ocorrencias do mês corrente + programadas — banco local, tempo real) + unidades_info (tentativas)',
+    fonte_status_atividade:
+      'intranet (unidades_info) — cadastro provisório até a API do Portal expor o campo',
     linhas: linhas,
   })
 })
