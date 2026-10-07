@@ -15,16 +15,6 @@
 //   - Duração fixa: 1 hora (decisão embutida autorizada).
 //   - Escopo de escrita: refresh tokens regenerados com calendar.events (gate do champion;
 //     sem isso o Google responde 403 insufficient_permissions — caminho de falha provado).
-// marca nao_sincronizada + erro (ocorrência permanece confirmada — nunca depende do Google)
-const marcarErro = (oc, msg) => {
-  try {
-    oc.set('google_sync_estado', 'nao_sincronizada')
-    oc.set('google_sync_erro', msg)
-    $app.save(oc)
-  } catch (errS) {
-    // falha ao marcar não derruba a resposta
-  }
-}
 
 routerAdd('POST', '/backend/v1/agenda/sincronizar', (e) => {
   const auth = e.auth
@@ -51,6 +41,17 @@ routerAdd('POST', '/backend/v1/agenda/sincronizar', (e) => {
     return e.json(404, { resultado: 'erro', mensagem: 'Ocorrência não encontrada.' })
   }
   const oc = ocs[0]
+  // marca nao_sincronizada + erro (ocorrência permanece confirmada — nunca depende do Google)
+  // JSVM: toda a lógica inline no callback (top-level não acessível no callback — QA Skip)
+  const marcarErro = (msg) => {
+    try {
+      oc.set('google_sync_estado', 'nao_sincronizada')
+      oc.set('google_sync_erro', msg)
+      $app.save(oc)
+    } catch (errS) {
+      // falha ao marcar não derruba a resposta
+    }
+  }
   const empresa = oc.getString('empresa') || ''
   const role = auth.getString('role') || 'consultor'
   let autorizadas = []
@@ -250,7 +251,7 @@ routerAdd('POST', '/backend/v1/agenda/sincronizar', (e) => {
           secretRefresh +
           ' com escopo calendar.events.'
         : 'Falha de rede na renovação do refresh token.'
-    marcarErro(oc, msgErro)
+    marcarErro(msgErro)
     return e.json(200, {
       resultado: 'credencial_expirada',
       mensagem: msgErro,
@@ -264,7 +265,7 @@ routerAdd('POST', '/backend/v1/agenda/sincronizar', (e) => {
     const r2 = renovar()
     if (r2.falha) {
       const msgErro2 = 'Renovação falhou após 401 (HTTP ' + (r2.http_status || '?') + ').'
-      marcarErro(oc, msgErro2)
+      marcarErro(msgErro2)
       return e.json(200, {
         resultado: 'credencial_expirada',
         mensagem: msgErro2,
@@ -305,7 +306,7 @@ routerAdd('POST', '/backend/v1/agenda/sincronizar', (e) => {
       ? parsedG.error.message
       : 'HTTP ' + resG.statusCode
   const msgFalha = 'Google Calendar recusou a criação do evento (' + erroGoogle + ').'
-  marcarErro(oc, msgFalha)
+  marcarErro(msgFalha)
   return e.json(200, {
     resultado: 'falha_sincronizacao',
     google_sync_estado: 'nao_sincronizada',
