@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T17:04:47.007Z",
+  "generatedAt": "2026-10-07T15:05:30.207Z",
   "collections": [
     {
       "name": "users",
@@ -29,28 +29,40 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "role",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["consultor", "gestor", "administrador"]
+          "selectValues": [
+            "consultor",
+            "gestor",
+            "administrador"
+          ]
         },
         {
           "name": "empresas_autorizadas",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["acuidar", "donahelp"]
+          "selectValues": [
+            "acuidar",
+            "donahelp"
+          ]
         }
       ],
       "indexes": [
@@ -155,14 +167,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "criado_por",
@@ -181,7 +198,28 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["acuidar", "donahelp"]
+          "selectValues": [
+            "acuidar",
+            "donahelp"
+          ]
+        },
+        {
+          "name": "google_event_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "google_sync_estado",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "google_sync_erro",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -206,7 +244,10 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["acuidar", "donahelp"]
+          "selectValues": [
+            "acuidar",
+            "donahelp"
+          ]
         },
         {
           "name": "portal_unit_id",
@@ -219,7 +260,12 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["ativa", "treinada", "suspensa", "fechada"]
+          "selectValues": [
+            "ativa",
+            "treinada",
+            "suspensa",
+            "fechada"
+          ]
         },
         {
           "name": "tempo_franquia",
@@ -250,14 +296,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -280,14 +331,20 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["pecaf", "pedhe"]
+          "selectValues": [
+            "pecaf",
+            "pedhe"
+          ]
         },
         {
           "name": "empresa",
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["acuidar", "donahelp"]
+          "selectValues": [
+            "acuidar",
+            "donahelp"
+          ]
         },
         {
           "name": "portal_unit_id",
@@ -468,7 +525,10 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["sim", "nao"]
+          "selectValues": [
+            "sim",
+            "nao"
+          ]
         },
         {
           "name": "preenchido_por",
@@ -487,14 +547,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "cliente_oculto",

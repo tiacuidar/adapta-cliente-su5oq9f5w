@@ -314,6 +314,15 @@ routerAdd('POST', '/backend/v1/agenda/importar', (e) => {
   const idsCriadas = []
 
   for (const ev of eventos) {
+    // LT-2-T01 — anti-duplicidade intranet↔Google: eventos criados PELA INTRANET
+    // (extendedProperties.private.origem = 'intranet') são PULADOS na importação —
+    // a mesma reunião nunca conta dobrado (chaves entrada_assistida × google_calendar).
+    const extPriv =
+      ev.extendedProperties && ev.extendedProperties.private ? ev.extendedProperties.private : null
+    if (extPriv && String(extPriv.origem || '') === 'intranet') {
+      resumo.pulados_origem_intranet = (resumo.pulados_origem_intranet || 0) + 1
+      continue
+    }
     // Eventos sem data/hora (all-day ou cancelados sem start) — RN-1-17: fora da contagem
     if (!ev.start || (!ev.start.dateTime && !ev.start.date)) {
       continue

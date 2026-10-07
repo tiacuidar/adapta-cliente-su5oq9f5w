@@ -56,6 +56,41 @@ const NovaReuniao = () => {
   const [justificativa, setJustificativa] = useState('')
   const [pendencias, setPendencias] = useState<string[]>([])
   const [criacao, setCriacao] = useState<EstadoCriacao>({ tipo: 'idle' })
+  // LT-2-T01 — sincronização com o Google Calendar (o registro nunca depende dele)
+  const [syncEstado, setSyncEstado] = useState<
+    'idle' | 'pendente' | 'sincronizada' | 'nao_sincronizada'
+  >('idle')
+  const [syncEnviando, setSyncEnviando] = useState(false)
+  const [syncErro, setSyncErro] = useState('')
+
+  const sincronizarGoogle = async (occurrenceId: string) => {
+    setSyncEnviando(true)
+    setSyncErro('')
+    try {
+      // rotas custom POST são chamadas com fetch absoluto (AP-2026-10-02-1215: pb.send prefixa /api)
+      const res = await fetch(pb.baseUrl + '/backend/v1/agenda/sincronizar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+        body: JSON.stringify({ occurrence_id: occurrenceId }),
+      })
+      const data = (await res.json()) as {
+        resultado?: string
+        mensagem?: string
+        google_event_id?: string
+      }
+      if (data.resultado === 'ok') {
+        setSyncEstado('sincronizada')
+      } else {
+        setSyncEstado('nao_sincronizada')
+        setSyncErro(data.mensagem || 'Falha ao criar o evento.')
+      }
+    } catch (err) {
+      setSyncEstado('nao_sincronizada')
+      setSyncErro('Falha de rede ao chamar a sincronização.')
+    } finally {
+      setSyncEnviando(false)
+    }
+  }
 
   useEffect(() => {
     let vivo = true
@@ -135,6 +170,8 @@ const NovaReuniao = () => {
       const data = res as { resultado: string; id?: string; estado?: string; mensagem?: string }
       if (data.resultado === 'confirmado' && data.id) {
         setCriacao({ tipo: 'confirmado', id: data.id, estado: data.estado || 'confirmado' })
+        setSyncEstado('pendente')
+        setSyncErro('')
       } else if (data.resultado === 'aguardando_aprovacao_de_excecao') {
         setCriacao({
           tipo: 'excecao',
@@ -187,6 +224,30 @@ const NovaReuniao = () => {
               <AlertDescription>
                 ✅ Ocorrência <strong>confirmada</strong> — comprovante ID:{' '}
                 <Badge variant="secondary">{criacao.id}</Badge>
+                {/* LT-2-T01 — status de sincronização com o Google (o registro nunca depende dele) */}
+                {syncEstado === 'pendente' && (
+                  <div className="mt-2 text-sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={syncEnviando}
+                      onClick={() => sincronizarGoogle(criacao.id)}
+                    >
+                      {syncEnviando ? 'Sincronizando…' : '📅 Sincronizar com Google Calendar'}
+                    </Button>
+                  </div>
+                )}
+                {syncEstado === 'sincronizada' && (
+                  <p className="mt-2 text-sm text-green-800">
+                    📅 Evento criado no Google Calendar da empresa.
+                  </p>
+                )}
+                {syncEstado === 'nao_sincronizada' && (
+                  <p className="mt-2 text-sm text-amber-800">
+                    ⚠️ Não sincronizada: {syncErro} — a ocorrência segue confirmada; use o botão
+                    para tentar de novo.
+                  </p>
+                )}
                 <Button variant="link" size="sm" onClick={limpar}>
                   Registrar outra reunião
                 </Button>

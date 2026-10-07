@@ -68,6 +68,10 @@ type Ocorrencia = {
   criado_por: string
   aprovador_por: string
   updated: string
+  // LT-2-T01 — sincronização com o Google Calendar
+  google_event_id?: string
+  google_sync_estado?: string
+  google_sync_erro?: string
 }
 
 const Fila = () => {
@@ -79,6 +83,33 @@ const Fila = () => {
   const [motivo, setMotivo] = useState('')
   const [erro, setErro] = useState('')
   const [processando, setProcessando] = useState(false)
+  // LT-2-T01 — retry de sincronização com o Google (só por botão, nunca automático)
+  const [syncEnviando, setSyncEnviando] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
+
+  const sincronizarGoogle = async (occurrenceId: string) => {
+    setSyncMsg('')
+    setSyncEnviando(true)
+    try {
+      // rotas custom POST: fetch absoluto (AP-2026-10-02-1215 — pb.send prefixa /api)
+      const res = await fetch(pb.baseUrl + '/backend/v1/agenda/sincronizar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+        body: JSON.stringify({ occurrence_id: occurrenceId }),
+      })
+      const data = (await res.json()) as { resultado?: string; mensagem?: string }
+      if (data.resultado === 'ok') {
+        setSyncMsg('📅 ' + (data.mensagem || 'Evento criado no Google Calendar.'))
+        await carregar()
+      } else {
+        setSyncMsg('⚠️ ' + (data.mensagem || 'Falha ao sincronizar.'))
+      }
+    } catch {
+      setSyncMsg('⚠️ Falha de rede ao chamar a sincronização.')
+    } finally {
+      setSyncEnviando(false)
+    }
+  }
 
   const auth = pb.authStore.record
   const role = String(auth?.role || 'consultor')
@@ -318,6 +349,42 @@ const Fila = () => {
                 <Button onClick={() => corrigir(selecionada)} disabled={processando}>
                   Marcar como revisada (correção concluída)
                 </Button>
+              )}
+
+              {/* LT-2-T01 — status de sync + retry (só por botão; o registro nunca depende do Google) */}
+              {selecionada.estado === 'confirmado' && (
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="text-xs font-medium">
+                    Google Calendar:{' '}
+                    {selecionada.google_sync_estado === 'sincronizada' ||
+                    selecionada.google_event_id ? (
+                      <span className="text-green-700">✅ sincronizada</span>
+                    ) : selecionada.google_sync_estado === 'nao_sincronizada' ? (
+                      <span className="text-amber-700">⚠️ não sincronizada</span>
+                    ) : (
+                      <span className="text-muted-foreground">— (entrada assistida sem sync)</span>
+                    )}
+                  </p>
+                  {selecionada.google_sync_erro && (
+                    <p className="text-xs text-muted-foreground">{selecionada.google_sync_erro}</p>
+                  )}
+                  {!(
+                    selecionada.google_sync_estado === 'sincronizada' || selecionada.google_event_id
+                  ) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={syncEnviando}
+                      onClick={(ev) => {
+                        ev.stopPropagation()
+                        sincronizarGoogle(selecionada.id)
+                      }}
+                    >
+                      {syncEnviando ? 'Sincronizando…' : '📅 Sincronizar com Google Calendar'}
+                    </Button>
+                  )}
+                  {syncMsg && <p className="text-xs">{syncMsg}</p>}
+                </div>
               )}
             </div>
           )}
