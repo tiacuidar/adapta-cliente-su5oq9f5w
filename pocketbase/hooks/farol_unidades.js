@@ -124,16 +124,13 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
   const agora = new Date()
   const mesCorrente = agora.toISOString().slice(0, 7)
   const iniMes = mesCorrente + '-01 00:00:00.000Z'
-  const proximoMesNum =
-    Number(mesCorrente.slice(5, 7)) === 12 ? 1 : Number(mesCorrente.slice(5, 7)) + 1
-  const proximoMesAno =
-    Number(mesCorrente.slice(5, 7)) === 12
-      ? Number(mesCorrente.slice(0, 4)) + 1
-      : Number(mesCorrente.slice(0, 4))
-  const fimMes = proximoMesAno + '-' + String(proximoMesNum).padStart(2, '0') + '-01 00:00:00.000Z'
   const diaDoMes = agora.getUTCDate()
+  // "Registro no mês" = fato JÁ OCORRIDO (data_fato <= hoje) — reunião futura do mesmo mês é
+  // PROGRAMADA, não registro (pego pela prova: fixture 2026-10-20 contava como registro)
+  const amanhaISO = new Date(agora.getTime() + 86400000).toISOString().slice(0, 10)
+  const fimMes = amanhaISO + ' 00:00:00.000Z'
 
-  // Registros do mês corrente por unidade (todas as ocorrências — elegibilidade total RN-1-18)
+  // Registros do mês corrente por unidade (fatos ocorridos — elegibilidade total RN-1-18)
   const registroNoMes = {}
   try {
     const ocs = $app.findRecordsByFilter(
@@ -150,8 +147,7 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
       registroNoMes[uid] = (registroNoMes[uid] || 0) + 1
     }
   } catch (err) {
-    // falha ao ler ocorrências → mapa com contagem zerada (sem inferência — RN-1-14 não se
-    // aplica ao mapa: a fonte de ocorrências é o banco local; falha de rede não existe aqui)
+    // falha ao ler ocorrências → mapa com contagem zerada (sem inferência)
     registroNoMes = {}
   }
 
