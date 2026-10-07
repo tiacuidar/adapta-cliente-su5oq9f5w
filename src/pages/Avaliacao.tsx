@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { PageHeader } from '@/components/PageHeader'
 import {
   Select,
   SelectContent,
@@ -221,9 +222,12 @@ const Avaliacao = () => {
 
   if (!podeEditar) {
     return (
-      <div className="container mx-auto py-8 px-4 max-w-3xl">
-        <h1 className="text-2xl font-bold mb-1">Avaliação PECAF/PEDHE</h1>
-        <Alert className="mt-4">
+      <div className="space-y-6 max-w-3xl">
+        <PageHeader
+          title="📋 Avaliação PECAF/PEDHE"
+          subtitle="Somente gestor ou administrador preenche a avaliação (faturamento e contratos são dados de negócio). Consultores consultam pelo farol."
+        />
+        <Alert>
           <AlertDescription>
             Somente gestor ou administrador preenche a avaliação (faturamento e contratos são dados
             de negócio). Consultores consultam pelo farol.
@@ -234,16 +238,15 @@ const Avaliacao = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-1">
-        Avaliação {programa === 'pecaf' ? 'PECAF' : 'PEDHE'}
-      </h1>
-      <p className="text-sm text-muted-foreground mb-4">
-        {programa === 'pecaf'
-          ? 'Programa de reconhecimento da rede Acuidar (anual — convenção).'
-          : 'Programa de reconhecimento da rede Dona Help (anual — convenção).'}{' '}
-        O sistema calcula o resultado geral automaticamente.
-      </p>
+    <div className="space-y-6 max-w-4xl">
+      <PageHeader
+        title={`📋 Avaliação ${programa === 'pecaf' ? 'PECAF' : 'PEDHE'}`}
+        subtitle={`${
+          programa === 'pecaf'
+            ? 'Programa de reconhecimento da rede Acuidar (anual — convenção).'
+            : 'Programa de reconhecimento da rede Dona Help (anual — convenção).'
+        } O sistema calcula o resultado geral automaticamente.`}
+      />
 
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="space-y-1">

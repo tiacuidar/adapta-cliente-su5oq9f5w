@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PageHeader } from '@/components/PageHeader'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -25,6 +26,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 /* LT-1-T03 — Fila de revisão e aprovação de exceções (SPEC-1-002 + matriz F1-T04)
    Consultor: corrige rascunhos; não vê aguardando_aprovacao_de_excecao (RLS).
    Gestor/Admin: aprova/rejeita exceção com motivo (aprovador ≠ solicitante). */
+
+const LABEL_ROLE: Record<string, string> = {
+  consultor: 'Consultor',
+  gestor: 'Gestor',
+  administrador: 'Administrador',
+}
 
 const ESTADOS = [
   { v: 'todos', label: 'Todos' },
@@ -176,12 +183,13 @@ const Fila = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-1">Fila de ocorrências</h1>
-      <p className="text-sm text-muted-foreground mb-4">
-        Revisão e aprovação — seu perfil: <Badge variant="secondary">{role}</Badge>
-        {!podeAprovar && ' (exceções aguardando aprovação não são visíveis ao consultor)'}
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="🗂️ Fila de ocorrências"
+        subtitle={`Revisão e aprovação — seu perfil: ${LABEL_ROLE[role] || role}${
+          !podeAprovar ? ' (exceções aguardando aprovação não são visíveis ao consultor)' : ''
+        }`}
+      />
 
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="space-y-1">

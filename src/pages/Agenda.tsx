@@ -3,6 +3,7 @@ import pb from '@/lib/pocketbase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { PageHeader } from '@/components/PageHeader'
 import {
   Select,
   SelectContent,
@@ -82,13 +83,11 @@ const Agenda = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-3xl">
-      <h1 className="text-2xl font-bold mb-1">Importar da Agenda</h1>
-      <p className="text-sm text-muted-foreground mb-4">
-        Importa reuniões elegíveis do Google Calendar (janela: 7 dias atrás a 14 dias à frente).
-        Reimportar não cria duplicatas. Reuniões sem unidade identificável vão para conferência
-        humana — o sistema nunca adivinha.
-      </p>
+    <div className="space-y-6 max-w-3xl">
+      <PageHeader
+        title="📅 Importar da Agenda"
+        subtitle="Importa reuniões elegíveis do Google Calendar (janela: 7 dias atrás a 14 dias à frente). Reimportar não cria duplicatas. Reuniões sem unidade identificável vão para conferência humana — o sistema nunca adivinha."
+      />
 
       <Card>
         <CardHeader>

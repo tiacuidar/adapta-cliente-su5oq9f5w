@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { buscarUnidades, type Unidade } from '@/lib/unidades'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -174,15 +175,13 @@ const NovaReuniao = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Registrar reunião</CardTitle>
-          <CardDescription>
-            Registro assistido — a ocorrência é criada na intranet após sua confirmação
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="space-y-6 max-w-2xl">
+      <PageHeader
+        title="🎥 Registrar reunião"
+        subtitle="Registro assistido — a ocorrência é criada na intranet após sua confirmação"
+      />
+      <Card className="shadow-subtle">
+        <CardContent className="pt-6">
           {criacao.tipo === 'confirmado' && (
             <Alert className="mb-4 border-green-600 bg-green-50">
               <AlertDescription>

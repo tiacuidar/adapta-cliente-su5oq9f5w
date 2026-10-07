@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { PageHeader } from '@/components/PageHeader'
 import {
   Select,
   SelectContent,
@@ -182,13 +183,11 @@ const Farol = () => {
   }, [dados, filtroSemaforo, busca])
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-6xl">
-      <h1 className="text-2xl font-bold mb-1">Farol das Unidades</h1>
-      <p className="text-sm text-muted-foreground mb-4">
-        Tela única por unidade: semáforo PECAF/PEDHE (anual), mapa de acompanhamento (mensal),
-        status de atividade, ocorrências e cobertura. Clique numa unidade para ver e editar o que
-        compete ao seu perfil.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="🚦 Farol das Unidades"
+        subtitle="Tela única por unidade: semáforo PECAF/PEDHE (anual), mapa de acompanhamento (mensal), status de atividade, ocorrências e cobertura. Clique numa unidade para ver e editar o que compete ao seu perfil."
+      />
 
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="space-y-1">
@@ -259,39 +258,60 @@ const Farol = () => {
 
       {!carregando && dados?.resultado === 'ok' && (
         <>
-          {/* Semáforo — contagens (FA-3) */}
+          {/* Semáforo — contagens clicáveis que filtram (estilo NEXUS FarolSummaryCards) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            {SEMAFORO.map((s) => (
-              <Card key={s.v}>
+            {SEMAFORO.map((s) => {
+              const ativo = filtroSemaforo === s.v
+              return (
+                <Card
+                  key={s.v}
+                  onClick={() => setFiltroSemaforo(ativo ? 'todos' : s.v)}
+                  className={`cursor-pointer transition-all hover:-translate-y-0.5 shadow-subtle ${
+                    s.v === 'verde'
+                      ? 'bg-emerald-50/50 border-emerald-200'
+                      : s.v === 'amarelo'
+                        ? 'bg-amber-50/50 border-amber-200'
+                        : s.v === 'vermelho'
+                          ? 'bg-rose-50/50 border-rose-200'
+                          : 'bg-slate-50 border-slate-200'
+                  } ${ativo ? 'ring-2 ring-[var(--brand-primary)] shadow-md scale-[1.02]' : ''}`}
+                >
+                  <CardHeader className="pb-1">
+                    <CardDescription className="text-xs flex items-center gap-2">
+                      <span className={`inline-block h-3 w-3 rounded-full ${s.dot}`} />
+                      {s.label}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl sm:text-3xl font-bold tracking-tight">
+                      {dados.semaforo_contagem[s.v] ?? 0}
+                    </p>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          {/* Mapa de acompanhamento — contagens (FA-1), estilo NEXUS */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+            {CLASSIFICACOES.map((c) => (
+              <Card key={c.v} className="shadow-subtle">
                 <CardHeader className="pb-1">
-                  <CardDescription className="text-xs flex items-center gap-2">
-                    <span className={`inline-block h-3 w-3 rounded-full ${s.dot}`} />
-                    {s.label}
+                  <CardDescription className="text-xs font-semibold uppercase tracking-wider">
+                    {c.label}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-bold">{dados.semaforo_contagem[s.v] ?? 0}</p>
+                  <p className="text-2xl sm:text-3xl font-bold tracking-tight">
+                    {dados.contagens[c.v] ?? 0}
+                  </p>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Mapa de acompanhamento — contagens (FA-1) */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-            {CLASSIFICACOES.map((c) => (
-              <Card key={c.v}>
-                <CardHeader className="pb-1">
-                  <CardDescription className="text-xs">{c.label}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{dados.contagens[c.v] ?? 0}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Tabela consolidada */}
-          <Card>
+          {/* Tabela consolidada — card branco NEXUS */}
+          <Card className="shadow-subtle">
             <CardHeader>
               <CardTitle className="text-base">Unidades — visão consolidada</CardTitle>
               <CardDescription>
@@ -320,21 +340,37 @@ const Farol = () => {
                         onClick={() => setDetalhe(l)}
                       >
                         <td className="py-2 pr-3">
-                          <span className="font-medium">{l.codigo}</span> — {l.nome}
-                          {l.cidade && <span className="text-muted-foreground"> · {l.cidade}</span>}
+                          <span className="block text-xs font-bold text-[var(--brand-primary)]">
+                            {l.nome}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            código {l.codigo}
+                            {l.cidade ? ` • ${l.cidade}` : ''}
+                          </span>
                         </td>
                         <td className="py-2 px-2">
                           <span className="flex items-center gap-2">
                             <span
                               className={`inline-block h-3 w-3 rounded-full ${dotSemaforo(l.semaforo)}`}
                             />
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs font-bold text-slate-700">
                               {l.semaforo === 'sem_classificacao'
                                 ? 'não se aplica'
                                 : l.avaliacao
-                                  ? `${l.avaliacao.resultado_geral} pts · ${l.avaliacao.ranqueada === 'sim' ? 'ranqueada' : 'não ranqueada'}`
+                                  ? `${l.avaliacao.resultado_geral} pts`
                                   : 'sem avaliação'}
                             </span>
+                            {l.avaliacao && (
+                              <span
+                                className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${
+                                  l.avaliacao.ranqueada === 'sim'
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-slate-100 text-slate-500'
+                                }`}
+                              >
+                                {l.avaliacao.ranqueada === 'sim' ? 'RANQUEADA' : 'NÃO RANQ.'}
+                              </span>
+                            )}
                           </span>
                         </td>
                         <td className="py-2 px-2">
