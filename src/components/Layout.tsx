@@ -14,7 +14,7 @@ const NAV_ITENS = [
   { to: '/reunioes/nova', label: 'Registrar reunião', icon: '🎥' },
   { to: '/fila', label: 'Fila de ocorrências', icon: '🗂️' },
   { to: '/painel', label: 'Painel de cobertura', icon: '📊' },
-  { to: '/agenda', label: 'Importar da Agenda', icon: '📅' },
+  { to: '/agenda', label: 'Agenda', icon: '📅' },
 ]
 
 const LABEL_ROLE: Record<string, string> = {

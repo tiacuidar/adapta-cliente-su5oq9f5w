@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/PageHeader'
 import {
   Select,
@@ -12,36 +13,56 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 
-/* LT-1-T07 — Importação do Google Agenda (gestor/admin; consultora só a sua empresa)
-   Resumo da importação: importadas, já existentes, sem unidade (conferência humana),
-   canceladas, erros. Idempotência garante zero duplicatas em reimportação. */
+/* FA-8 — Tela Agenda (pedido do champion 2026-10-07 13:07, autorizado 13:08):
+   reuniões AGENDADAS + FEITAS do dia, panorama para a consultora e visão completa
+   para a administração (quem registrou cada reunião). A importação é AUTOMÁTICA no
+   login (LT-2-T02) — a tela de importação saiu; o hook permanece. */
 
-type Resumo = {
-  total_eventos: number
-  importadas: number
-  ja_existentes: number
-  sem_unidade: number
-  canceladas: number
-  remarcadas: number
-  erros: number
+type Reuniao = {
+  id: string
+  horario: string
+  titulo: string
+  tipo: string
+  estado: string
+  unidade_codigo: string
+  unidade_nome: string
+  fonte: string
+  criado_por_nome: string
+  google_sync_estado: string
+  relato: string
 }
 
 type Resposta =
   | {
       resultado: 'ok'
       empresa: string
-      janela: { de: string; ate: string }
-      resumo: Resumo
-      sem_unidade_lista: { event_id: string; titulo: string; inicio: string }[]
-      ids_criadas: string[]
-      timestamp: string
+      data: string
+      hoje: string
+      contagens: {
+        total: number
+        agendadas: number
+        feitas: number
+        confirmadas: number
+        pendentes: number
+        canceladas: number
+      }
+      agendadas: Reuniao[]
+      feitas: Reuniao[]
     }
-  | { resultado: 'credencial_ausente'; secret?: string; mensagem: string }
-  | { resultado: 'credencial_expirada'; mensagem: string }
-  | { resultado: 'dados_indisponiveis'; motivo: string; fonte?: string }
-  | { resultado: 'erro'; mensagem: string }
+  | { resultado: 'erro'; mensagem?: string }
+
+const BADGE_ESTADO: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  pendente: 'outline',
+  em_revisao: 'secondary',
+  aguardando_correcao: 'destructive',
+  aguardando_aprovacao_de_excecao: 'destructive',
+  possivel_duplicidade: 'destructive',
+  falha_de_gravacao: 'destructive',
+  confirmado: 'default',
+}
+
+const hojeISO = () => new Date().toISOString().slice(0, 10)
 
 const Agenda = () => {
   const auth = pb.authStore.record
@@ -54,195 +75,194 @@ const Agenda = () => {
         )
 
   const [empresa, setEmpresa] = useState(autorizadas[0] || 'acuidar')
-  const [carregando, setCarregando] = useState(false)
-  const [resposta, setResposta] = useState<Resposta | null>(null)
+  const [data, setData] = useState(hojeISO())
+  const [dados, setDados] = useState<Resposta | null>(null)
+  const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
 
-  const importar = async () => {
+  const carregar = (emp: string, dt: string) => {
     setCarregando(true)
     setErro('')
-    setResposta(null)
-    try {
-      // Rota custom POST fora de /api/*: fetch com URL absoluta do backend
-      // (pb.send prefixa /api; nginx do preview não repassa POST /backend — AP-1215)
-      const res = await fetch(pb.baseUrl + '/backend/v1/agenda/importar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: pb.authStore.token,
-        },
-        body: JSON.stringify({ empresa }),
-      })
-      const data = (await res.json()) as Resposta
-      setResposta(data)
-    } catch {
-      setErro('Falha de comunicação ao importar da agenda.')
-    } finally {
-      setCarregando(false)
-    }
+    fetch(`${pb.baseUrl}/backend/v1/agenda/dia?empresa=${emp}&data=${dt}`, {
+      headers: { Authorization: pb.authStore.token },
+    })
+      .then((r) => r.json())
+      .then((d: Resposta) => setDados(d))
+      .catch(() => setErro('Falha de comunicação ao carregar a agenda.'))
+      .finally(() => setCarregando(false))
   }
 
+  useEffect(() => {
+    carregar(empresa, data)
+  }, [empresa, data])
+
+  const ehHoje = useMemo(() => data === hojeISO(), [data])
+
+  const CardReuniao = ({ r }: { r: Reuniao }) => (
+    <div className="rounded-lg border p-3 shadow-subtle bg-white">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-bold text-sm text-[var(--brand-primary)] truncate">
+            {r.horario} · {r.titulo}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {r.unidade_nome}
+            {r.unidade_codigo && r.unidade_codigo !== 'conferencia'
+              ? ` (cód. ${r.unidade_codigo})`
+              : ''}{' '}
+            · {r.tipo || '—'} ·{' '}
+            {r.fonte === 'google_calendar' ? 'Google Agenda' : 'entrada assistida'}
+          </p>
+        </div>
+        <Badge variant={BADGE_ESTADO[r.estado] || 'outline'}>{r.estado}</Badge>
+      </div>
+      <p className="text-[10px] text-slate-400 mt-1">Registrada por: {r.criado_por_nome}</p>
+    </div>
+  )
+
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <PageHeader
-        title="📅 Importar da Agenda"
-        subtitle="Importa reuniões elegíveis do Google Calendar (janela: 7 dias atrás a 14 dias à frente). Reimportar não cria duplicatas. Reuniões sem unidade identificável vão para conferência humana — o sistema nunca adivinha."
+        title="📅 Agenda"
+        subtitle="Reuniões agendadas e feitas, dia a dia. A importação do Google Agenda é automática a cada login — esta tela mostra o que está na intranet."
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Executar importação</CardTitle>
-          <CardDescription>
-            A credencial do Google fica nos Secrets do Skip — nunca no navegador.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Empresa</Label>
-            <Select value={empresa} onValueChange={setEmpresa}>
-              <SelectTrigger className="w-64">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {autorizadas.includes('acuidar') && (
-                  <SelectItem value="acuidar">Acuidar Franquias</SelectItem>
-                )}
-                {autorizadas.includes('donahelp') && (
-                  <SelectItem value="donahelp">Dona Help Franquias</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+      <div className="flex flex-wrap gap-3 mb-2">
+        <div className="space-y-1">
+          <Label className="text-xs">Empresa</Label>
+          <Select value={empresa} onValueChange={setEmpresa}>
+            <SelectTrigger className="w-52">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {autorizadas.includes('acuidar') && (
+                <SelectItem value="acuidar">Acuidar Franquias</SelectItem>
+              )}
+              {autorizadas.includes('donahelp') && (
+                <SelectItem value="donahelp">Dona Help Franquias</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Data</Label>
+          <Input
+            type="date"
+            value={data}
+            onChange={(e) => setData(e.target.value)}
+            className="w-44"
+          />
+        </div>
+        {!ehHoje && (
+          <div className="space-y-1 flex items-end">
+            <button
+              type="button"
+              onClick={() => setData(hojeISO())}
+              className="text-xs font-semibold text-[var(--brand-primary)] hover:underline"
+            >
+              voltar para hoje
+            </button>
+          </div>
+        )}
+      </div>
+
+      {erro && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{erro}</AlertDescription>
+        </Alert>
+      )}
+
+      {carregando && <p className="text-sm text-muted-foreground">Carregando…</p>}
+
+      {!carregando && dados?.resultado === 'erro' && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{dados.mensagem || 'Erro ao carregar a agenda.'}</AlertDescription>
+        </Alert>
+      )}
+
+      {!carregando && dados?.resultado === 'ok' && (
+        <>
+          {/* Panorama do dia */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <Card className="shadow-subtle">
+              <CardHeader className="pb-1">
+                <CardDescription className="text-xs">Reuniões no dia</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{dados.contagens.total}</p>
+              </CardContent>
+            </Card>
+            <Card className="shadow-subtle bg-sky-50/50 border-sky-200">
+              <CardHeader className="pb-1">
+                <CardDescription className="text-xs">Agendadas</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-sky-700">{dados.contagens.agendadas}</p>
+              </CardContent>
+            </Card>
+            <Card className="shadow-subtle bg-emerald-50/50 border-emerald-200">
+              <CardHeader className="pb-1">
+                <CardDescription className="text-xs">Feitas</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-emerald-700">{dados.contagens.feitas}</p>
+              </CardContent>
+            </Card>
+            <Card className="shadow-subtle">
+              <CardHeader className="pb-1">
+                <CardDescription className="text-xs">Confirmadas / pendentes</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">
+                  {dados.contagens.confirmadas}
+                  <span className="text-base text-muted-foreground">
+                    {' '}
+                    / {dados.contagens.pendentes}
+                  </span>
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
-          <Button onClick={importar} disabled={carregando}>
-            {carregando ? 'Importando…' : 'Importar da Agenda'}
-          </Button>
-
-          {erro && (
-            <Alert variant="destructive">
-              <AlertDescription>{erro}</AlertDescription>
-            </Alert>
-          )}
-
-          {resposta?.resultado === 'credencial_ausente' && (
-            <Alert variant="destructive">
-              <AlertDescription>
-                <strong>Credencial ausente{resposta.secret ? ` (${resposta.secret})` : ''}.</strong>{' '}
-                {resposta.mensagem}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {resposta?.resultado === 'credencial_expirada' && (
-            <Alert variant="destructive">
-              <AlertDescription>
-                <strong>Credencial expirada.</strong> {resposta.mensagem}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {resposta?.resultado === 'dados_indisponiveis' && (
-            <Alert variant="destructive">
-              <AlertDescription>
-                Dados indisponíveis ({resposta.motivo}) — nenhuma importação parcial foi feita.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {resposta?.resultado === 'erro' && (
-            <Alert variant="destructive">
-              <AlertDescription>{resposta.mensagem}</AlertDescription>
-            </Alert>
-          )}
-
-          {resposta?.resultado === 'ok' && (
-            <div className="space-y-3">
-              <Alert className="border-green-600 bg-green-50">
-                <AlertDescription>
-                  ✅ Importação concluída — janela {resposta.janela.de} a {resposta.janela.ate}
-                </AlertDescription>
-              </Alert>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <Card>
-                  <CardHeader className="pb-1">
-                    <CardDescription className="text-xs">Eventos na agenda</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold">{resposta.resumo.total_eventos}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-1">
-                    <CardDescription className="text-xs">Importadas</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-green-600">
-                      {resposta.resumo.importadas}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-1">
-                    <CardDescription className="text-xs">Já existentes</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold">{resposta.resumo.ja_existentes}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-1">
-                    <CardDescription className="text-xs">Canceladas</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-amber-600">
-                      {resposta.resumo.canceladas}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-1">
-                    <CardDescription className="text-xs">Sem unidade (conferir)</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-amber-600">
-                      {resposta.resumo.sem_unidade}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-1">
-                    <CardDescription className="text-xs">Erros</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-red-600">{resposta.resumo.erros}</p>
-                  </CardContent>
-                </Card>
-              </div>
-              {resposta.sem_unidade_lista.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Reuniões sem unidade identificável</CardTitle>
-                    <CardDescription>
-                      Conferência humana — o sistema não adivinha a unidade (RN-1-19).
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {resposta.sem_unidade_lista.map((s) => (
-                      <div key={s.event_id} className="rounded-md border p-2 text-sm">
-                        <p className="font-medium">{s.titulo}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {s.inicio.slice(0, 16).replace('T', ' ')} ·{' '}
-                          <Badge variant="outline">{s.event_id}</Badge>
-                        </p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+          {/* Agendadas */}
+          <Card className="shadow-subtle">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">🗓️ Agendadas — {data}</CardTitle>
+              <CardDescription className="text-xs">
+                Reuniões futuras (planejamento) — viram "feitas" quando a data passa.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {dados.agendadas.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Nenhuma reunião agendada neste dia.
+                </p>
+              ) : (
+                dados.agendadas.map((r) => <CardReuniao key={r.id} r={r} />)
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          {/* Feitas */}
+          <Card className="shadow-subtle">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">✅ Feitas — {data}</CardTitle>
+              <CardDescription className="text-xs">
+                Reuniões com data passada (histórico — canceladas nunca são excluídas, RN-1-08).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {dados.feitas.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Nenhuma reunião feita neste dia.
+                </p>
+              ) : (
+                dados.feitas.map((r) => <CardReuniao key={r.id} r={r} />)
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   )
 }
