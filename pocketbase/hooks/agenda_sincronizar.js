@@ -91,14 +91,16 @@ routerAdd('POST', '/backend/v1/agenda/sincronizar', (e) => {
 
   // Dados da ocorrência
   const tipo = oc.getString('occurrence_type') || 'Acompanhamento'
-  const dataFato = oc.getString('data_fato') || ''
+  // data_fato é timestamp PocketBase ("2026-10-07 00:00:00.000Z") — normalizar para YYYY-MM-DD
+  // (bug pego pela prova real: data crua gerava datetime inválido e o Google respondia 400)
+  const dataFato = (oc.getString('data_fato') || '').slice(0, 10)
   const horario = oc.getString('horario') || ''
   const tituloOc = oc.getString('titulo') || ''
   const portalUnitId = oc.getString('portal_unit_id') || ''
-  if (!dataFato || !horario) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataFato) || !horario) {
     return e.json(200, {
       resultado: 'erro',
-      mensagem: 'Ocorrência sem data/hora — impossível criar o evento.',
+      mensagem: 'Ocorrência sem data/hora válida — impossível criar o evento.',
     })
   }
 
