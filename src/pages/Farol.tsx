@@ -270,7 +270,7 @@ const Farol = () => {
           <Card className="shadow-subtle">
             <CardHeader>
               <CardTitle className="text-base">
-                Unidades — semáforo {programa.toUpperCase()}
+                Unidades — semáforo {empresa === 'acuidar' ? 'PECAF' : 'PEDHE'}
               </CardTitle>
               <CardDescription>
                 {dados.total_unidades} unidades · semáforo: {dados.fonte_semaforo} ·{' '}
