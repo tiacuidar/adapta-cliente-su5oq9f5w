@@ -31,30 +31,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
    e a collection unidades_info (update direto — RLS gestor/admin na collection).
    "Registrar reunião" permanece aba própria (fora da consolidação). */
 
-const CLASSIFICACOES = [
-  { v: 'em_dia', label: 'Em dia', cor: 'bg-green-100 text-green-800 border-green-300' },
-  { v: 'programada', label: 'Programada', cor: 'bg-blue-100 text-blue-800 border-blue-300' },
-  {
-    v: 'proximo_atraso',
-    label: 'Próximo a atraso',
-    cor: 'bg-amber-100 text-amber-800 border-amber-300',
-  },
-  { v: 'em_atraso', label: 'Em atraso', cor: 'bg-red-100 text-red-800 border-red-300' },
-  {
-    v: 'nao_retorna',
-    label: 'Não retorna tentativas',
-    cor: 'bg-gray-200 text-gray-800 border-gray-400',
-  },
-]
-
 const SEMAFORO = [
   { v: 'verde', label: 'Verde (ranqueada)', dot: 'bg-green-500' },
   { v: 'amarelo', label: 'Amarelo (mínimos ok)', dot: 'bg-amber-400' },
   { v: 'vermelho', label: 'Vermelho (abaixo/sem dados)', dot: 'bg-red-500' },
   { v: 'sem_classificacao', label: 'Sem classificação (< 3 meses)', dot: 'bg-gray-300' },
 ]
-
-const STATUS_ATIVIDADE = ['ativa', 'treinada', 'suspensa', 'fechada']
 
 type AvaliacaoInfo = {
   id: string
@@ -70,12 +52,7 @@ type Linha = {
   codigo: string
   nome: string
   cidade: string
-  classificacao: string
-  registro_no_mes: number
-  registro_mes_anterior: number
-  proxima_programada: string
   status_atividade: string
-  tentativas_sem_retorno: number
   observacao: string
   semaforo: string
   semaforo_motivo: string
@@ -88,10 +65,8 @@ type Resposta =
       empresa: string
       programa: string
       ano_avaliacao: number
-      mes_referencia: string
       gerado_em: string
       total_unidades: number
-      contagens: Record<string, number>
       semaforo_contagem: Record<string, number>
       status_atividade_contagem: Record<string, number>
       fonte_unidades: string
@@ -122,9 +97,6 @@ type Ocorrencia = {
   updated: string
 }
 
-const corClassificacao = (v: string) =>
-  CLASSIFICACOES.find((c) => c.v === v)?.cor || 'bg-muted text-muted-foreground border-transparent'
-const labelClassificacao = (v: string) => CLASSIFICACOES.find((c) => c.v === v)?.label || v
 const dotSemaforo = (v: string) => SEMAFORO.find((s) => s.v === v)?.dot || 'bg-gray-300'
 
 const BADGE_ESTADO: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -186,7 +158,7 @@ const Farol = () => {
     <div className="space-y-6">
       <PageHeader
         title="🚦 Farol das Unidades"
-        subtitle="Tela única por unidade: semáforo PECAF/PEDHE (anual), mapa de acompanhamento (mensal), status de atividade, ocorrências e cobertura. Clique numa unidade para ver e editar o que compete ao seu perfil."
+        subtitle="Semáforo PECAF/PEDHE por empresa (anual) + avaliação, ocorrências e status de atividade. Clique numa unidade para ver e editar o que compete ao seu perfil. Acompanhamento mensal por reuniões: painel de cobertura."
       />
 
       <div className="flex flex-wrap gap-3 mb-4">
@@ -292,31 +264,17 @@ const Farol = () => {
             })}
           </div>
 
-          {/* Mapa de acompanhamento — contagens (FA-1), estilo NEXUS */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-            {CLASSIFICACOES.map((c) => (
-              <Card key={c.v} className="shadow-subtle">
-                <CardHeader className="pb-1">
-                  <CardDescription className="text-xs font-semibold uppercase tracking-wider">
-                    {c.label}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl sm:text-3xl font-bold tracking-tight">
-                    {dados.contagens[c.v] ?? 0}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Tabela consolidada — card branco NEXUS */}
+          {/* FA-6 (decisão champion 2026-10-07): farol UNICAMENTE PECAF/PEDHE por empresa —
+              o mapa de acompanhamento mensal (reuniões) sai do farol; visão mensal continua
+              no painel de cobertura. Semáforo + avaliação + ocorrências + status. */}
           <Card className="shadow-subtle">
             <CardHeader>
-              <CardTitle className="text-base">Unidades — visão consolidada</CardTitle>
+              <CardTitle className="text-base">
+                Unidades — semáforo {programa.toUpperCase()}
+              </CardTitle>
               <CardDescription>
-                {dados.total_unidades} unidades · semáforo: {dados.fonte_semaforo} · mapa:{' '}
-                {dados.mes_referencia} · {dados.fonte_unidades}
+                {dados.total_unidades} unidades · semáforo: {dados.fonte_semaforo} ·{' '}
+                {dados.fonte_unidades}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -326,10 +284,8 @@ const Farol = () => {
                     <tr className="border-b text-left text-xs text-muted-foreground">
                       <th className="py-2 pr-3">Unidade</th>
                       <th className="py-2 px-2">Semáforo</th>
-                      <th className="py-2 px-2">Situação</th>
                       <th className="py-2 px-2 text-center">Avaliação</th>
                       <th className="py-2 px-2">Status</th>
-                      <th className="py-2 px-2 text-center">No mês</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -373,13 +329,6 @@ const Farol = () => {
                             )}
                           </span>
                         </td>
-                        <td className="py-2 px-2">
-                          <span
-                            className={`inline-block rounded border px-2 py-0.5 text-xs font-medium ${corClassificacao(l.classificacao)}`}
-                          >
-                            {labelClassificacao(l.classificacao)}
-                          </span>
-                        </td>
                         <td className="py-2 px-2 text-center text-xs">
                           {l.avaliacao ? l.avaliacao.tempo_franquia || '—' : '—'}
                         </td>
@@ -389,9 +338,6 @@ const Farol = () => {
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
-                        </td>
-                        <td className="py-2 px-2 text-center">
-                          {l.registro_no_mes > 0 ? l.registro_no_mes : '—'}
                         </td>
                       </tr>
                     ))}

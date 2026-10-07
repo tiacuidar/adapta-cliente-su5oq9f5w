@@ -1,13 +1,9 @@
-// FAROL-1 (farol consolidado = FA-3+FA-4) — Farol das Unidades: mapa + SEMÁFORO PECAF/PEDHE
+// FAROL-1 (FA-6, 2026-10-07) — Farol das Unidades: UNICAMENTE SEMÁFORO PECAF/PEDHE por empresa
 // GET /backend/v1/farol?empresa=acuidar|donahelp
-// Regras aprovadas pelo champion (2026-10-06, sinal 06_notas/sinal-farol-unidades-pecaf-pedhe.md
-// + decisões 13:42 do farol consolidado):
-//   Mapa (cadência MENSAL — FA-1, inalterada):
-//     em_dia        = ocorrência no mês corrente OU reunião programada futura
-//     proximo_atraso= sem registro no mês corrente E dia >= 20 do mês
-//     em_atraso     = sem registro no mês corrente (antes do dia 20) OU mês anterior sem registro
-//     programada    = próxima reunião na agenda futura (independe do registro)
-//     nao_retorna   = tentativas_sem_retorno >= 3 (unidades_info)
+// Decisão do champion (2026-10-07 10:33-10:37): o farol é unicamente PECAF/PEDHE conforme a
+// empresa (Acuidar → PECAF · Dona Help → PEDHE) — reuniões NÃO influenciam mais o farol.
+// O mapa de acompanhamento mensal (reuniões) saiu do farol; a visão mensal continua no
+// painel de cobertura (SPEC-1-003). Regras do semáforo (aprovadas 2026-10-06, inalteradas):
 //   SEMÁFORO (FA-3 — regra aprovada; mínimos dos regulamentos dos PDFs):
 //     verde  = ranqueada = SIM
 //     amarelo= ranqueada = NÃO mas atinge os mínimos do regulamento para o tempo de franquia
@@ -116,56 +112,10 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
     })
   }
 
-  // 2. Ocorrências do mês corrente E do mês anterior (cadência mensal)
+  // FA-6 (decisão champion 2026-10-07): o farol é UNICAMENTE PECAF/PEDHE por empresa —
+  // reuniões NÃO influenciam mais o farol (mapa mensal removido; a visão mensal por
+  // reuniões continua no painel de cobertura — SPEC-1-003). Sem ocorrências aqui.
   const agora = new Date()
-  const mesCorrente = agora.toISOString().slice(0, 7)
-  const diaDoMes = agora.getUTCDate()
-  const anoCor = Number(mesCorrente.slice(0, 4))
-  const mesNum = Number(mesCorrente.slice(5, 7))
-  const mesAnterior =
-    mesNum === 1 ? String(anoCor - 1) + '-12' : anoCor + '-' + String(mesNum - 1).padStart(2, '0')
-  const iniCorrente = mesCorrente + '-01 00:00:00.000Z'
-  const iniProximo =
-    mesNum === 12 ? String(anoCor + 1) + '-01' : anoCor + '-' + String(mesNum + 1).padStart(2, '0')
-  const iniAnterior = mesAnterior + '-01 00:00:00.000Z'
-
-  const lerPorMes = (ini, fim) => {
-    try {
-      return $app.findRecordsByFilter(
-        'ocorrencias',
-        "empresa = {:empresa} && data_fato >= {:ini} && data_fato < {:fim} && portal_unit_id != 'conferencia'",
-        '-created',
-        1000,
-        0,
-        { empresa: empresa, ini: ini, fim: fim },
-      )
-    } catch (err) {
-      return []
-    }
-  }
-  const ocorrCorrente = lerPorMes(iniCorrente, iniProximo + ' 00:00:00.000Z')
-  const ocorrAnterior = lerPorMes(iniAnterior, iniCorrente)
-
-  // 3. Reuniões programadas futuras (agenda: eventos futuros já importados)
-  const hoje = agora.toISOString().slice(0, 10)
-  let programadasPorUnidade = {}
-  try {
-    const futuras = $app.findRecordsByFilter(
-      'ocorrencias',
-      "empresa = {:empresa} && data_fato >= {:hoje} && occurrence_type != 'cancelamento'",
-      'data_fato',
-      1000,
-      0,
-      { empresa: empresa, hoje: hoje },
-    )
-    for (const f of futuras) {
-      const uid = f.getString('portal_unit_id')
-      if (!programadasPorUnidade[uid]) programadasPorUnidade[uid] = []
-      programadasPorUnidade[uid].push(f.getString('data_fato').slice(0, 10))
-    }
-  } catch (err) {
-    programadasPorUnidade = {}
-  }
 
   // 4. unidades_info: status de atividade + tentativas sem retorno + tempo de franquia
   let infoPorUnidade = {}
@@ -339,16 +289,8 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
     }
   }
 
-  // 7. Classificar cada unidade (mapa mensal + semáforo anual)
+  // 7. Montar linhas (semáforo anual — FA-6: sem mapa mensal de reuniões)
   const linhas = []
-  const contagens = {
-    em_dia: 0,
-    proximo_atraso: 0,
-    em_atraso: 0,
-    programada: 0,
-    nao_retorna: 0,
-    sem_classificacao: 0,
-  }
   const semaforoContagem = { verde: 0, amarelo: 0, vermelho: 0, sem_classificacao: 0 }
   const statusAtividadeContagem = {
     ativa: 0,
@@ -359,35 +301,7 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
   }
 
   for (const u of unidades) {
-    let registroCorrente = 0
-    for (const oc of ocorrCorrente) {
-      if (oc.getString('portal_unit_id') === u.codigo) registroCorrente++
-    }
-    let registroAnterior = 0
-    for (const oc of ocorrAnterior) {
-      if (oc.getString('portal_unit_id') === u.codigo) registroAnterior++
-    }
-    const programadas = programadasPorUnidade[u.codigo] || []
     const info = infoPorUnidade[u.codigo] || null
-    const tentativas = info ? Number(info.tentativas_sem_retorno || 0) : 0
-
-    let classificacao = 'em_atraso'
-    if (tentativas >= 3) {
-      classificacao = 'nao_retorna'
-    } else if (registroCorrente > 0) {
-      classificacao = 'em_dia'
-    } else if (programadas.length > 0) {
-      classificacao = 'programada'
-    } else if (diaDoMes >= 20) {
-      classificacao = 'proximo_atraso'
-    } else if (registroAnterior === 0) {
-      classificacao = 'em_atraso'
-    } else {
-      classificacao = 'em_dia'
-    }
-
-    if (contagens[classificacao] !== undefined) contagens[classificacao]++
-
     const statusAtividade = info ? info.status_atividade : ''
     if (statusAtividade === 'ativa') statusAtividadeContagem.ativa++
     else if (statusAtividade === 'treinada') statusAtividadeContagem.treinada++
@@ -407,12 +321,7 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
       codigo: u.codigo,
       nome: u.nome,
       cidade: u.cidade,
-      classificacao: classificacao,
-      registro_no_mes: registroCorrente,
-      registro_mes_anterior: registroAnterior,
-      proxima_programada: programadas.length > 0 ? programadas[0] : '',
       status_atividade: statusAtividade,
-      tentativas_sem_retorno: tentativas,
       observacao: info ? info.observacao : '',
       semaforo: sem.semaforo,
       semaforo_motivo: sem.motivo,
@@ -435,10 +344,8 @@ routerAdd('GET', '/backend/v1/farol', (e) => {
     empresa: empresa,
     programa: programa,
     ano_avaliacao: anoAvaliacao,
-    mes_referencia: mesCorrente + ' (cadência mensal — 30/31 dias conforme calendário)',
     gerado_em: new Date().toISOString(),
     total_unidades: unidades.length,
-    contagens: contagens,
     semaforo_contagem: semaforoContagem,
     status_atividade_contagem: statusAtividadeContagem,
     fonte_unidades:
