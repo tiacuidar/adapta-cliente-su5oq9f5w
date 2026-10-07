@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import pb from '@/lib/pocketbase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -56,6 +57,12 @@ type Linha = {
   observacao: string
   semaforo: string
   semaforo_motivo: string
+  // FA-7 — mapa de acompanhamento mensal (regras aprovadas na FA-1)
+  classificacao: string
+  prioridade: number
+  registro_no_mes: number
+  proxima_programada: string
+  tentativas_sem_retorno: number
   avaliacao: AvaliacaoInfo | null
 }
 
@@ -69,6 +76,9 @@ type Resposta =
       total_unidades: number
       semaforo_contagem: Record<string, number>
       status_atividade_contagem: Record<string, number>
+      mapa_contagem: Record<string, number>
+      mes_referencia: string
+      fonte_mapa: string
       fonte_unidades: string
       fonte_status_atividade: string
       fonte_semaforo: string
@@ -99,6 +109,30 @@ type Ocorrencia = {
 
 const dotSemaforo = (v: string) => SEMAFORO.find((s) => s.v === v)?.dot || 'bg-gray-300'
 
+/* FA-7 — MAPA DE ACOMPANHAMENTO (regras aprovadas na FA-1) */
+const MAPA = [
+  { v: 'nao_retorna', label: 'Não retornam as tentativas', dot: 'bg-red-600', cor: '#dc2626' },
+  { v: 'em_atraso', label: 'Em atraso com as reuniões', dot: 'bg-orange-500', cor: '#f97316' },
+  { v: 'proximo_atraso', label: 'Próximo a ficar em atraso', dot: 'bg-amber-400', cor: '#fbbf24' },
+  { v: 'programada', label: 'Com reunião programada', dot: 'bg-sky-500', cor: '#0ea5e9' },
+  { v: 'em_dia', label: 'Em dia com as reuniões', dot: 'bg-emerald-500', cor: '#10b981' },
+]
+
+/* FA-7 — STATUS DE ATIVIDADE (unidades_info) */
+const STATUS_ATIV = [
+  { v: 'ativa', label: 'Ativa', cor: '#10b981' },
+  { v: 'treinada', label: 'Treinada', cor: '#0ea5e9' },
+  { v: 'suspensa', label: 'Suspensa', cor: '#fbbf24' },
+  { v: 'fechada', label: 'Fechada', cor: '#94a3b8' },
+  { v: 'sem_status', label: 'Sem status', cor: '#cbd5e1' },
+]
+
+const labelMapa = (v: string) => MAPA.find((m) => m.v === v)?.label || v
+const dotMapa = (v: string) => MAPA.find((m) => m.v === v)?.dot || 'bg-gray-300'
+const labelStatus = (v: string) => STATUS_ATIV.find((s) => s.v === v)?.label || v
+const corStatus = (v: string) => STATUS_ATIV.find((s) => s.v === v)?.cor || '#cbd5e1'
+const corMapa = (v: string) => MAPA.find((m) => m.v === v)?.cor || '#cbd5e1'
+
 const BADGE_ESTADO: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   pendente: 'outline',
   em_revisao: 'secondary',
@@ -124,6 +158,7 @@ const Farol = () => {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
   const [filtroSemaforo, setFiltroSemaforo] = useState('todos')
+  const [filtroMapa, setFiltroMapa] = useState('todos')
   const [busca, setBusca] = useState('')
   const [detalhe, setDetalhe] = useState<Linha | null>(null)
 
@@ -148,17 +183,39 @@ const Farol = () => {
     return dados.linhas.filter(
       (l) =>
         (filtroSemaforo === 'todos' || l.semaforo === filtroSemaforo) &&
+        (filtroMapa === 'todos' || l.classificacao === filtroMapa) &&
         (busca.trim() === '' ||
           l.nome.toLowerCase().includes(busca.toLowerCase()) ||
           l.codigo.includes(busca.trim())),
     )
-  }, [dados, filtroSemaforo, busca])
+  }, [dados, filtroSemaforo, filtroMapa, busca])
+
+  // Dados dos gráficos (FA-7): distribuição do mapa + status de atividade
+  const dadosMapa = useMemo(() => {
+    if (!dados || dados.resultado !== 'ok') return []
+    return MAPA.map((m) => ({
+      nome: m.label,
+      valor: dados.mapa_contagem[m.v] ?? 0,
+      v: m.v,
+      cor: m.cor,
+    })).filter((x) => x.valor > 0)
+  }, [dados])
+
+  const dadosStatus = useMemo(() => {
+    if (!dados || dados.resultado !== 'ok') return []
+    return STATUS_ATIV.map((s) => ({
+      nome: s.label,
+      valor: dados.status_atividade_contagem[s.v] ?? 0,
+      v: s.v,
+      cor: s.cor,
+    })).filter((x) => x.valor > 0)
+  }, [dados])
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="🚦 Farol das Unidades"
-        subtitle="Semáforo PECAF/PEDHE por empresa (anual) + avaliação, ocorrências e status de atividade. Clique numa unidade para ver e editar o que compete ao seu perfil. Acompanhamento mensal por reuniões: painel de cobertura."
+        subtitle="Semáforo PECAF/PEDHE (anual) + mapa de acompanhamento mensal com gráficos + status de atividade. Clique numa unidade para ver e editar o que compete ao seu perfil."
       />
 
       <div className="flex flex-wrap gap-3 mb-4">
@@ -189,6 +246,22 @@ const Farol = () => {
               {SEMAFORO.map((s) => (
                 <SelectItem key={s.v} value={s.v}>
                   {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Situação (mês)</Label>
+          <Select value={filtroMapa} onValueChange={setFiltroMapa}>
+            <SelectTrigger className="w-64">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas as situações</SelectItem>
+              {MAPA.map((m) => (
+                <SelectItem key={m.v} value={m.v}>
+                  {m.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -264,13 +337,141 @@ const Farol = () => {
             })}
           </div>
 
-          {/* FA-6 (decisão champion 2026-10-07): farol UNICAMENTE PECAF/PEDHE por empresa —
-              o mapa de acompanhamento mensal (reuniões) sai do farol; visão mensal continua
-              no painel de cobertura. Semáforo + avaliação + ocorrências + status. */}
+          {/* FA-7 (decisão champion 2026-10-07 12:36): GRÁFICOS + MAPA DE ACOMPANHAMENTO +
+              STATUS DE ATIVIDADE voltam ao farol, ALÉM do semáforo (os dois convivem). */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
+            <Card className="shadow-subtle">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">
+                  🗺️ Mapa de acompanhamento — {dados.mes_referencia}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Relação com as reuniões do mês (regras aprovadas na FA-1) · {dados.fonte_mapa}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {dadosMapa.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">
+                    Sem dados no período.
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={dadosMapa}
+                        dataKey="valor"
+                        nameKey="nome"
+                        innerRadius={55}
+                        outerRadius={85}
+                        paddingAngle={2}
+                      >
+                        {dadosMapa.map((d) => (
+                          <Cell key={d.v} fill={d.cor} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend
+                        verticalAlign="bottom"
+                        height={36}
+                        formatter={(value: string) => {
+                          const item = dadosMapa.find((d) => d.nome === value)
+                          return `${value} (${item?.valor ?? 0})`
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+                {/* Cards clicáveis do mapa que filtram a tabela */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                  {MAPA.map((m) => {
+                    const ativo = filtroMapa === m.v
+                    const n = dados.mapa_contagem[m.v] ?? 0
+                    return (
+                      <button
+                        key={m.v}
+                        type="button"
+                        onClick={() => setFiltroMapa(ativo ? 'todos' : m.v)}
+                        className={`text-left rounded-lg border p-2 transition-all hover:-translate-y-0.5 shadow-subtle ${
+                          ativo ? 'ring-2 ring-[var(--brand-primary)] shadow-md scale-[1.02]' : ''
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <span className={`inline-block h-2.5 w-2.5 rounded-full ${m.dot}`} />
+                          {m.label}
+                        </span>
+                        <span className="text-lg font-bold tracking-tight">{n}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-subtle">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">📊 Status de atividade das unidades</CardTitle>
+                <CardDescription className="text-xs">
+                  {dados.fonte_status_atividade}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {dadosStatus.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">
+                    Sem status cadastrado.
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={dadosStatus}
+                        dataKey="valor"
+                        nameKey="nome"
+                        innerRadius={55}
+                        outerRadius={85}
+                        paddingAngle={2}
+                      >
+                        {dadosStatus.map((d) => (
+                          <Cell key={d.v} fill={d.cor} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend
+                        verticalAlign="bottom"
+                        height={36}
+                        formatter={(value: string) => {
+                          const item = dadosStatus.find((d) => d.nome === value)
+                          return `${value} (${item?.valor ?? 0})`
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                  {STATUS_ATIV.map((s) => {
+                    const n = dados.status_atividade_contagem[s.v] ?? 0
+                    return (
+                      <div key={s.v} className="rounded-lg border p-2">
+                        <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: s.cor }}
+                          />
+                          {s.label}
+                        </span>
+                        <span className="text-lg font-bold tracking-tight">{n}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Tabela de unidades — semáforo + situação mensal (FA-7) */}
           <Card className="shadow-subtle">
             <CardHeader>
               <CardTitle className="text-base">
-                Unidades — semáforo {empresa === 'acuidar' ? 'PECAF' : 'PEDHE'}
+                Unidades — semáforo {empresa === 'acuidar' ? 'PECAF' : 'PEDHE'} + situação do mês
               </CardTitle>
               <CardDescription>
                 {dados.total_unidades} unidades · semáforo: {dados.fonte_semaforo} ·{' '}
@@ -284,6 +485,7 @@ const Farol = () => {
                     <tr className="border-b text-left text-xs text-muted-foreground">
                       <th className="py-2 pr-3">Unidade</th>
                       <th className="py-2 px-2">Semáforo</th>
+                      <th className="py-2 px-2">Situação (mês)</th>
                       <th className="py-2 px-2 text-center">Avaliação</th>
                       <th className="py-2 px-2">Status</th>
                     </tr>
@@ -327,6 +529,26 @@ const Farol = () => {
                                 {l.avaliacao.ranqueada === 'sim' ? 'RANQUEADA' : 'NÃO RANQ.'}
                               </span>
                             )}
+                          </span>
+                        </td>
+                        {/* FA-7 — situação mensal (mapa de acompanhamento) */}
+                        <td className="py-2 px-2">
+                          <span className="flex items-center gap-2">
+                            <span
+                              className={`inline-block h-2.5 w-2.5 rounded-full ${dotMapa(l.classificacao)}`}
+                            />
+                            <span className="text-xs text-slate-700">
+                              {labelMapa(l.classificacao)}
+                            </span>
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {l.registro_no_mes > 0
+                              ? `${l.registro_no_mes} no mês`
+                              : l.proxima_programada
+                                ? `programada ${l.proxima_programada}`
+                                : l.tentativas_sem_retorno > 0
+                                  ? `${l.tentativas_sem_retorno} tentativas sem retorno`
+                                  : 'sem registro no mês'}
                           </span>
                         </td>
                         <td className="py-2 px-2 text-center text-xs">
